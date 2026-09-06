@@ -209,6 +209,8 @@ export default function App() {
             <span>•</span>
             <span>{PIZZERIA_CONTACT.kosher}</span>
             <span>•</span>
+            <span>זמן משלוח משוער: {PIZZERIA_CONTACT.deliveryTime}</span>
+            <span>•</span>
             <span>טלפון: {PIZZERIA_CONTACT.phoneDisplay}</span>
           </div>
         </div>

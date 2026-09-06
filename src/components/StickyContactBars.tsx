@@ -182,6 +182,9 @@ export const StickyContactBars: React.FC = () => {
                     <strong className="text-slate-900">שעות פתיחה:</strong> {PIZZERIA_CONTACT.openingHours}
                   </p>
                   <p className="text-slate-700">
+                    <strong className="text-slate-900">זמן משלוח משוער:</strong> {PIZZERIA_CONTACT.deliveryTime}
+                  </p>
+                  <p className="text-slate-700">
                     <strong className="text-slate-900">כתובת:</strong> {PIZZERIA_CONTACT.address}
                   </p>
                   <p className="text-red-700 font-bold">
