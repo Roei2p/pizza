@@ -3,8 +3,11 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
   return {
+    // GitHub Pages serves this repo from https://<user>.github.io/pizza/,
+    // so asset URLs need the repo name as a base path in that build only.
+    base: mode === 'gh-pages' ? '/pizza/' : '/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
