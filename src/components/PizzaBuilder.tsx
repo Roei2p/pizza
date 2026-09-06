@@ -184,38 +184,44 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
 
   return (
     <div id="pizza-builder-section" className="w-full" dir="rtl">
-      {/* Header Banner - Professional Polish Style */}
-      <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-50 border border-red-200 rounded-full text-red-700 text-xs font-bold mb-2">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>התאמה אישית מלאה לפי רבעים ומשולשים</span>
+      {/* Header Banner - cinematic photo backdrop matching the welcome hero */}
+      <div
+        className="relative overflow-hidden rounded-2xl mb-8 shadow-lg bg-slate-900 bg-cover bg-center"
+        style={{ backgroundImage: "url('/assets/hero-pizza-poster.jpg')" }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/75 to-slate-950/40" />
+        <div className="relative p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-amber-100 text-xs font-bold mb-2">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>התאמה אישית מלאה לפי רבעים ומשולשים</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight drop-shadow-lg">
+              הרכבת הפיצה שלך 🍕
+            </h2>
+            <p className="text-white/80 text-sm sm:text-base leading-relaxed mt-1 max-w-xl">
+              בחרו את כמות הפיצות, גודל המגש, וסוג הבצק. תוכלו לחלק את התוספות לפי רבע, חצי, 3/4 או פיצה שלמה – ולבחור מספר תוספות באותו המשולש!
+            </p>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
-            הרכבת הפיצה שלך 🍕
-          </h2>
-          <p className="text-slate-600 text-sm sm:text-base leading-relaxed mt-1">
-            בחרו את כמות הפיצות, גודל המגש, וסוג הבצק. תוכלו לחלק את התוספות לפי רבע, חצי, 3/4 או פיצה שלמה – ולבחור מספר תוספות באותו המשולש!
-          </p>
-        </div>
-        <div className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-full border border-slate-200 shrink-0">
-          <span className="text-sm font-bold text-slate-600">כמות פיצות:</span>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="w-7 h-7 bg-white rounded-full flex items-center justify-center text-slate-700 font-bold hover:bg-slate-200 border border-slate-200 shadow-xs text-xs"
-            >
-              -
-            </button>
-            <span className="w-8 text-center font-black text-slate-800 text-base">{quantity}</span>
-            <button
-              type="button"
-              onClick={() => setQuantity(quantity + 1)}
-              className="w-7 h-7 bg-white rounded-full flex items-center justify-center text-slate-700 font-bold hover:bg-slate-200 border border-slate-200 shadow-xs text-xs"
-            >
-              +
-            </button>
+          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 shrink-0">
+            <span className="text-sm font-bold text-white/90">כמות פיצות:</span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                className="w-7 h-7 bg-white rounded-full flex items-center justify-center text-slate-700 font-bold hover:bg-slate-100 shadow-xs text-xs cursor-pointer"
+              >
+                -
+              </button>
+              <span className="w-8 text-center font-black text-white text-base">{quantity}</span>
+              <button
+                type="button"
+                onClick={() => setQuantity(quantity + 1)}
+                className="w-7 h-7 bg-white rounded-full flex items-center justify-center text-slate-700 font-bold hover:bg-slate-100 shadow-xs text-xs cursor-pointer"
+              >
+                +
+              </button>
+            </div>
           </div>
         </div>
       </div>
