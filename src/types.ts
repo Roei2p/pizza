@@ -84,10 +84,31 @@ export interface CartDessertItem {
   image: string;
 }
 
+// Fixed-price items from Sharon's real menu that don't fit the custom
+// size/crust/topping pizza builder (e.g. malawach pizza, a set vegan pizza).
+export interface SpecialtyItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  icon: string;
+  badge?: string;
+}
+
+export interface CartSpecialtyItem {
+  id: string; // unique item id in cart
+  specialtyId: string;
+  name: string;
+  unitPrice: number;
+  quantity: number;
+  icon: string;
+}
+
 export type CartItem =
   | { type: 'pizza'; data: CustomPizzaItem }
   | { type: 'drink'; data: CartDrinkItem }
-  | { type: 'dessert'; data: CartDessertItem };
+  | { type: 'dessert'; data: CartDessertItem }
+  | { type: 'specialty'; data: CartSpecialtyItem };
 
 export interface OrderCheckoutInfo {
   customerName: string;

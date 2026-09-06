@@ -41,18 +41,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   };
 
   // Subtotal calculation
-  const subtotal = cartItems.reduce((acc, item) => {
-    if (item.type === 'pizza') {
-      return acc + item.data.unitPrice * item.data.quantity;
-    }
-    if (item.type === 'drink') {
-      return acc + item.data.unitPrice * item.data.quantity;
-    }
-    if (item.type === 'dessert') {
-      return acc + item.data.unitPrice * item.data.quantity;
-    }
-    return acc;
-  }, 0);
+  const subtotal = cartItems.reduce((acc, item) => acc + item.data.unitPrice * item.data.quantity, 0);
 
   const deliveryFee = deliveryType === 'delivery' && cartItems.length > 0 ? PIZZERIA_CONTACT.deliveryFee : 0;
   const grandTotal = subtotal + deliveryFee;
@@ -95,6 +84,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         text += `\n🥤 ${item.data.quantity}x ${item.data.name} (${item.data.sizeVolume}) - ₪${item.data.unitPrice * item.data.quantity}\n`;
       } else if (item.type === 'dessert') {
         text += `\n🍰 ${item.data.quantity}x ${item.data.name} - ₪${item.data.unitPrice * item.data.quantity}\n`;
+      } else if (item.type === 'specialty') {
+        text += `\n${item.data.icon} ${item.data.quantity}x ${item.data.name} - ₪${item.data.unitPrice * item.data.quantity}\n`;
       }
     });
 
@@ -397,6 +388,54 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                           referrerPolicy="no-referrer"
                           className="w-12 h-12 rounded-lg object-cover"
                         />
+                        <div>
+                          <h5 className="font-bold text-xs text-slate-800">{item.data.name}</h5>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200">
+                          <button
+                            type="button"
+                            onClick={() => onUpdateQuantity(index, item.data.quantity - 1)}
+                            className="w-6 h-6 bg-white rounded-md flex items-center justify-center text-slate-700 text-xs cursor-pointer"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="font-bold text-xs px-2 text-slate-800">
+                            {item.data.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => onUpdateQuantity(index, item.data.quantity + 1)}
+                            className="w-6 h-6 bg-white rounded-md flex items-center justify-center text-slate-700 text-xs cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <span className="font-black text-slate-800 text-xs min-w-[36px] text-left">
+                          ₪{item.data.unitPrice * item.data.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => onRemoveItem(index)}
+                          className="text-slate-400 hover:text-red-600 p-1 cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                } else if (item.type === 'specialty') {
+                  return (
+                    <div
+                      key={item.data.id || index}
+                      className="bg-white rounded-xl p-3 border border-slate-200 shadow-xs flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 shrink-0 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-2xl">
+                          {item.data.icon}
+                        </div>
                         <div>
                           <h5 className="font-bold text-xs text-slate-800">{item.data.name}</h5>
                         </div>

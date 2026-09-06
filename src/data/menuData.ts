@@ -1,4 +1,4 @@
-import { PizzaSize, PizzaCrust, Topping, DrinkItem, DessertItem } from '../types';
+import { PizzaSize, PizzaCrust, Topping, DrinkItem, DessertItem, SpecialtyItem } from '../types';
 
 export const PIZZERIA_CONTACT = {
   name: 'הפיצה של שרון',
@@ -58,6 +58,26 @@ export const PIZZA_CRUSTS: PizzaCrust[] = [
     name: 'שוליים ממולאים בגבינת מוצרלה',
     description: 'צמת שוליים גדושה במוצרלה איטלקית נמסה',
     extraPrice: 12,
+  },
+];
+
+// Fixed-price specialty items from Sharon's real menu — served as-is,
+// not through the size/crust/topping builder above.
+export const SPECIALTY_ITEMS: SpecialtyItem[] = [
+  {
+    id: 'malawach_pizza',
+    name: 'מלאווח פיצה',
+    description: 'מלאווח חם עם רוטב פיצה וגבינה. ניתן להוסיף תוספות בתשלום.',
+    price: 28,
+    icon: '🫓',
+  },
+  {
+    id: 'vegan_personal_pizza',
+    name: 'פיצה טבעונית אישית',
+    description: 'פיצה אישית עם גבינה טבעונית, מוכנה במטבח המכין גם מנות שאינן טבעוניות.',
+    price: 38,
+    icon: '🌱',
+    badge: 'טבעוני',
   },
 ];
 

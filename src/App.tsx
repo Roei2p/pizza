@@ -5,9 +5,10 @@ import { Header } from './components/Header';
 import { PizzaBuilder } from './components/PizzaBuilder';
 import { DrinksSection } from './components/DrinksSection';
 import { DessertsSection } from './components/DessertsSection';
+import { SpecialtyPizzas } from './components/SpecialtyPizzas';
 import { CartDrawer } from './components/CartDrawer';
 import { StickyContactBars } from './components/StickyContactBars';
-import { CartItem, CustomPizzaItem, CartDrinkItem, CartDessertItem } from './types';
+import { CartItem, CustomPizzaItem, CartDrinkItem, CartDessertItem, CartSpecialtyItem } from './types';
 import { PIZZERIA_CONTACT } from './data/menuData';
 import { Pizza, GlassWater, Cake } from 'lucide-react';
 
@@ -70,6 +71,28 @@ export default function App() {
         return copy;
       }
       return [...prev, { type: 'dessert', data: dessert }];
+    });
+  };
+
+  // Add Specialty (fixed-price) item to Cart
+  const handleAddSpecialty = (specialty: CartSpecialtyItem) => {
+    setCartItems((prev) => {
+      const existingIdx = prev.findIndex(
+        (item) => item.type === 'specialty' && item.data.specialtyId === specialty.specialtyId
+      );
+      if (existingIdx !== -1) {
+        const copy = [...prev];
+        const existing = copy[existingIdx] as { type: 'specialty'; data: CartSpecialtyItem };
+        copy[existingIdx] = {
+          type: 'specialty',
+          data: {
+            ...existing.data,
+            quantity: existing.data.quantity + specialty.quantity,
+          },
+        };
+        return copy;
+      }
+      return [...prev, { type: 'specialty', data: specialty }];
     });
   };
 
@@ -180,7 +203,10 @@ export default function App() {
             transition={{ duration: 0.22, ease: 'easeOut' }}
           >
             {activeTab === 'pizza' && (
-              <PizzaBuilder onAddToCart={handleAddPizza} />
+              <>
+                <SpecialtyPizzas onAddSpecialty={handleAddSpecialty} />
+                <PizzaBuilder onAddToCart={handleAddPizza} />
+              </>
             )}
 
             {activeTab === 'drinks' && (
