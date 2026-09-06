@@ -29,6 +29,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const [street, setStreet] = useState('');
   const [notes, setNotes] = useState('');
   const [orderCompleted, setOrderCompleted] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{ name?: boolean; phone?: boolean }>({});
 
   // Portion label helper for cart
   const getPortionLabel = (quarters: QuarterId[]) => {
@@ -111,10 +112,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   };
 
   const handleSendOrderWhatsApp = () => {
-    if (!phone && !customerName) {
-      alert('אנא מלאו שם ומספר טלפון כדי לשלוח את ההזמנה לשרון');
+    const errors = {
+      name: !customerName.trim(),
+      phone: !phone.trim(),
+    };
+    if (errors.name || errors.phone) {
+      setFieldErrors(errors);
+      document.getElementById('input-customer-name')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
+    setFieldErrors({});
     confetti({
       particleCount: 100,
       spread: 70,
@@ -470,20 +477,48 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 פרטי הלקוח למשלוח ואישור:
               </label>
               <div className="space-y-2">
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="שם מלא *"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-red-500"
-                />
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="מספר טלפון להתקשרות *"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-red-500"
-                />
+                <div>
+                  <input
+                    id="input-customer-name"
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => {
+                      setCustomerName(e.target.value);
+                      if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: false }));
+                    }}
+                    placeholder="שם מלא *"
+                    aria-invalid={fieldErrors.name || undefined}
+                    className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none transition-colors ${
+                      fieldErrors.name
+                        ? 'border-red-500 ring-2 ring-red-200'
+                        : 'border-slate-200 focus:border-red-500'
+                    }`}
+                  />
+                  {fieldErrors.name && (
+                    <p className="text-[11px] text-red-600 font-bold mt-1">יש להזין שם מלא כדי לשלוח את ההזמנה</p>
+                  )}
+                </div>
+                <div>
+                  <input
+                    id="input-customer-phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      if (fieldErrors.phone) setFieldErrors((prev) => ({ ...prev, phone: false }));
+                    }}
+                    placeholder="מספר טלפון להתקשרות *"
+                    aria-invalid={fieldErrors.phone || undefined}
+                    className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none transition-colors ${
+                      fieldErrors.phone
+                        ? 'border-red-500 ring-2 ring-red-200'
+                        : 'border-slate-200 focus:border-red-500'
+                    }`}
+                  />
+                  {fieldErrors.phone && (
+                    <p className="text-[11px] text-red-600 font-bold mt-1">יש להזין מספר טלפון כדי לשלוח את ההזמנה</p>
+                  )}
+                </div>
                 {deliveryType === 'delivery' && (
                   <div className="grid grid-cols-2 gap-2">
                     <input

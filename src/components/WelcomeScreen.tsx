@@ -11,7 +11,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onContinue }) => {
   return (
     <div
       id="welcome-overlay"
-      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 z-50 bg-gradient-to-br from-red-950/80 via-slate-900/70 to-orange-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
       dir="rtl"
     >
       <motion.div
@@ -20,6 +20,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onContinue }) => {
         transition={{ duration: 0.3, ease: 'easeOut' }}
         className="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl p-6 sm:p-10 shadow-2xl text-slate-800 relative overflow-hidden text-center my-auto"
       >
+        {/* Decorative background glow */}
+        <div className="pointer-events-none absolute -top-24 -right-24 w-56 h-56 rounded-full bg-red-200/50 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 -left-24 w-56 h-56 rounded-full bg-amber-200/50 blur-3xl" />
+
         {/* Brand Tag */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-red-50 border border-red-200 text-red-700 text-xs font-bold mb-5">
           <Flame className="w-3.5 h-3.5 text-red-600" />

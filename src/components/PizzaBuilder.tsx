@@ -19,6 +19,12 @@ interface PizzaBuilderProps {
   onAddToCart: (pizza: CustomPizzaItem) => void;
 }
 
+const TOPPING_CATEGORIES: { id: 'veggies' | 'cheese' | 'specials'; label: string; icon: string }[] = [
+  { id: 'veggies', label: 'ירקות ותבלינים', icon: '🥬' },
+  { id: 'cheese', label: 'גבינות', icon: '🧀' },
+  { id: 'specials', label: 'תוספות מיוחדות', icon: '⭐' },
+];
+
 export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
   const [selectedSize, setSelectedSize] = useState<PizzaSizeId>('family');
   const [selectedCrust, setSelectedCrust] = useState<CrustId>('classic');
@@ -455,72 +461,93 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
               </div>
             </div>
 
-            {/* Toppings Grid with multi-select on the active portion */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
+            {/* Toppings Grid with multi-select on the active portion, grouped by category */}
+            <div className="space-y-5">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <h4 className="font-bold text-slate-700 text-sm">
                   2. הוסף תוספות למשולשים שבחרת ({getPortionLabel(activeQuarters)}):
                 </h4>
+                <div className="flex items-center gap-3 text-[10px] text-slate-500 font-medium">
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded-full bg-red-600 inline-block" /> על כל המשולשים שנבחרו
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded-full bg-amber-500 inline-block" /> על חלק מהם
+                  </span>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {TOPPINGS_LIST.map((topping) => {
-                  const applied = appliedToppings.find((at) => at.toppingId === topping.id);
-                  const isFullyOnActive =
-                    applied && activeQuarters.every((q) => applied.quarters.includes(q));
-                  const isPartiallyOnActive =
-                    applied && activeQuarters.some((q) => applied.quarters.includes(q));
+              {TOPPING_CATEGORIES.map((cat) => {
+                const items = TOPPINGS_LIST.filter((t) => t.category === cat.id);
+                if (items.length === 0) return null;
+                return (
+                  <div key={cat.id}>
+                    <h5 className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1.5">
+                      <span>{cat.icon}</span>
+                      <span>{cat.label}</span>
+                    </h5>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {items.map((topping) => {
+                        const applied = appliedToppings.find((at) => at.toppingId === topping.id);
+                        const isFullyOnActive =
+                          applied && activeQuarters.every((q) => applied.quarters.includes(q));
+                        const isPartiallyOnActive =
+                          applied && activeQuarters.some((q) => applied.quarters.includes(q));
 
-                  return (
-                    <button
-                      key={topping.id}
-                      id={`btn-topping-${topping.id}`}
-                      type="button"
-                      onClick={() => toggleToppingOnActiveQuarters(topping.id)}
-                      className={`p-2.5 rounded-xl text-right transition-all border flex flex-col justify-between cursor-pointer group relative ${
-                        isFullyOnActive
-                          ? 'border-2 border-red-600 bg-red-50 text-red-700 shadow-sm'
-                          : isPartiallyOnActive
-                          ? 'border border-amber-400 bg-amber-50/50 text-slate-800'
-                          : 'border-slate-200 hover:bg-slate-50 bg-white text-slate-700 hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-1 mb-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-lg">{topping.icon}</span>
-                          <span className="font-bold text-xs leading-tight text-slate-800">
-                            {topping.name}
-                          </span>
-                        </div>
-                        {isFullyOnActive ? (
-                          <span className="w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-xs shrink-0 font-bold">
-                            ✓
-                          </span>
-                        ) : isPartiallyOnActive ? (
-                          <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
-                            ½
-                          </span>
-                        ) : (
-                          <span className="w-5 h-5 rounded-full border border-slate-300 group-hover:border-slate-400 text-slate-400 flex items-center justify-center text-xs shrink-0">
-                            +
-                          </span>
-                        )}
-                      </div>
+                        return (
+                          <button
+                            key={topping.id}
+                            id={`btn-topping-${topping.id}`}
+                            type="button"
+                            onClick={() => toggleToppingOnActiveQuarters(topping.id)}
+                            aria-pressed={!!isFullyOnActive}
+                            className={`p-2.5 rounded-xl text-right transition-all border flex flex-col justify-between cursor-pointer group relative focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 ${
+                              isFullyOnActive
+                                ? 'border-2 border-red-600 bg-red-50 text-red-700 shadow-sm'
+                                : isPartiallyOnActive
+                                ? 'border border-amber-400 bg-amber-50/50 text-slate-800'
+                                : 'border-slate-200 hover:bg-slate-50 bg-white text-slate-700 hover:border-slate-300'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-1 mb-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-lg">{topping.icon}</span>
+                                <span className="font-bold text-xs leading-tight text-slate-800">
+                                  {topping.name}
+                                </span>
+                              </div>
+                              {isFullyOnActive ? (
+                                <span className="w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-xs shrink-0 font-bold">
+                                  ✓
+                                </span>
+                              ) : isPartiallyOnActive ? (
+                                <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                                  ½
+                                </span>
+                              ) : (
+                                <span className="w-5 h-5 rounded-full border border-slate-300 group-hover:border-slate-400 text-slate-400 flex items-center justify-center text-xs shrink-0">
+                                  +
+                                </span>
+                              )}
+                            </div>
 
-                      <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1">
-                        <span>₪{topping.priceWhole} שלם</span>
-                        <span>₪{topping.pricePerQuarter} לרבע</span>
-                      </div>
+                            <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1">
+                              <span>₪{topping.priceWhole} שלם</span>
+                              <span>₪{topping.pricePerQuarter} לרבע</span>
+                            </div>
 
-                      {applied && (
-                        <div className="mt-1.5 pt-1 border-t border-slate-200 text-[10px] text-red-700 font-bold flex items-center justify-between">
-                          <span>{getPortionLabel(applied.quarters)}</span>
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                            {applied && (
+                              <div className="mt-1.5 pt-1 border-t border-slate-200 text-[10px] text-red-700 font-bold flex items-center justify-between">
+                                <span>{getPortionLabel(applied.quarters)}</span>
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Currently Applied Toppings Summary list */}
