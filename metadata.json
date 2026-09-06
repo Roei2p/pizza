@@ -1,0 +1,6 @@
+{
+  "name": "הפיצה של שרון",
+  "description": "אתר הזמנות לפיצה של שרון - התאמת פיצות אישיות לפי משולשים ותוספות, שתייה וקינוחים",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
