@@ -1,4 +1,4 @@
-import { PizzaSize, PizzaCrust, Topping, DrinkItem, DessertItem, SpecialtyItem } from '../types';
+import { PizzaSize, PizzaCrust, Topping, DrinkItem, DessertItem, SpecialtyItem, DietaryOption } from '../types';
 
 export const PIZZERIA_CONTACT = {
   name: 'הפיצה של שרון',
@@ -6,12 +6,14 @@ export const PIZZERIA_CONTACT = {
   phoneDisplay: '03-555-7427',
   phoneDial: '035557427',
   whatsappNumber: '972505557427',
-  address: 'רחוב הבנים 18, קניון מרכז המושבה',
-  kosher: 'כשר למהדרין - בד״צ בית יוסף',
+  address: 'שלום שבזי 37, אליכין',
+  kosher: 'כשר מהדרין',
   openingHours: 'א׳-ה׳: 11:00-23:30 | מוצ״ש: חצי שעה לאחר צאת השבת עד 00:30',
   deliveryFee: 18,
   minOrder: 80,
   deliveryTime: '40-60 דקות',
+  allergenNote:
+    'המוצרים עלולים להכיל או מכילים אלרגנים, וגלוטן עשוי להימצא גם במוצרים המוגדרים ללא גלוטן. כל המנות (כולל הטבעוניות) מיוצרות במטבח שאינו סטרילי.',
 };
 
 // Sizes and prices match Sharon's real delivery-app menu (אישית/משפחתית/ענקית).
@@ -40,6 +42,32 @@ export const PIZZA_SIZES: PizzaSize[] = [
   },
 ];
 
+// Dietary variants from the real menu: vegan adds a flat 3₪ across every size
+// (35→38, 45→48, 55→58); gluten-free is offered in the personal size only.
+export const DIETARY_OPTIONS: DietaryOption[] = [
+  {
+    id: 'regular',
+    name: 'רגיל',
+    icon: '🍕',
+    extraPrice: 0,
+    sizesAllowed: ['personal', 'family', 'giant'],
+  },
+  {
+    id: 'vegan',
+    name: 'טבעוני',
+    icon: '🌱',
+    extraPrice: 3,
+    sizesAllowed: ['personal', 'family', 'giant'],
+  },
+  {
+    id: 'gluten_free',
+    name: 'ללא גלוטן',
+    icon: '🌾',
+    extraPrice: 0,
+    sizesAllowed: ['personal'],
+  },
+];
+
 export const PIZZA_CRUSTS: PizzaCrust[] = [
   {
     id: 'classic',
@@ -61,8 +89,8 @@ export const PIZZA_CRUSTS: PizzaCrust[] = [
   },
 ];
 
-// Fixed-price specialty items from Sharon's real menu — served as-is,
-// not through the size/crust/topping builder above.
+// Fixed-price snacks and side dishes from Sharon's real menu ("נשנושים ומנות
+// צד") — served as-is, not through the size/crust/topping pizza builder.
 export const SPECIALTY_ITEMS: SpecialtyItem[] = [
   {
     id: 'malawach_pizza',
@@ -72,12 +100,18 @@ export const SPECIALTY_ITEMS: SpecialtyItem[] = [
     icon: '🫓',
   },
   {
-    id: 'vegan_personal_pizza',
-    name: 'פיצה טבעונית אישית',
-    description: 'פיצה אישית עם גבינה טבעונית, מוכנה במטבח המכין גם מנות שאינן טבעוניות.',
-    price: 38,
-    icon: '🌱',
-    badge: 'טבעוני',
+    id: 'mozzarella_sticks',
+    name: 'אצבעות מוצרלה',
+    description: 'אצבעות פריכות במילוי גבינת מוצרלה נמסה',
+    price: 25,
+    icon: '🧀',
+  },
+  {
+    id: 'gouda_rings',
+    name: 'טבעות גאודה',
+    description: 'טבעות פריכות במילוי גבינת גאודה',
+    price: 25,
+    icon: '🥯',
   },
 ];
 
@@ -94,6 +128,7 @@ export const TOPPINGS_LIST: Topping[] = [
     pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
     priceWhole: TOPPING_PRICE_WHOLE,
     category: 'veggies',
+    vegan: true,
   },
   {
     id: 'mushrooms',
@@ -102,6 +137,7 @@ export const TOPPINGS_LIST: Topping[] = [
     pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
     priceWhole: TOPPING_PRICE_WHOLE,
     category: 'veggies',
+    vegan: true,
   },
   {
     id: 'corn',
@@ -110,6 +146,7 @@ export const TOPPINGS_LIST: Topping[] = [
     pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
     priceWhole: TOPPING_PRICE_WHOLE,
     category: 'veggies',
+    vegan: true,
   },
   {
     id: 'onion_red',
@@ -118,6 +155,7 @@ export const TOPPINGS_LIST: Topping[] = [
     pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
     priceWhole: TOPPING_PRICE_WHOLE,
     category: 'veggies',
+    vegan: true,
   },
   {
     id: 'tomatoes',
@@ -126,6 +164,7 @@ export const TOPPINGS_LIST: Topping[] = [
     pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
     priceWhole: TOPPING_PRICE_WHOLE,
     category: 'veggies',
+    vegan: true,
   },
   {
     id: 'jalapeno',
@@ -134,6 +173,7 @@ export const TOPPINGS_LIST: Topping[] = [
     pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
     priceWhole: TOPPING_PRICE_WHOLE,
     category: 'veggies',
+    vegan: true,
   },
   {
     id: 'olives_kalamata',
@@ -142,6 +182,7 @@ export const TOPPINGS_LIST: Topping[] = [
     pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
     priceWhole: TOPPING_PRICE_WHOLE,
     category: 'veggies',
+    vegan: true,
   },
   {
     id: 'extra_cheese',
@@ -150,6 +191,7 @@ export const TOPPINGS_LIST: Topping[] = [
     pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
     priceWhole: TOPPING_PRICE_WHOLE,
     category: 'cheese',
+    vegan: false,
   },
   {
     id: 'feta',
@@ -158,6 +200,7 @@ export const TOPPINGS_LIST: Topping[] = [
     pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
     priceWhole: TOPPING_PRICE_WHOLE,
     category: 'cheese',
+    vegan: false,
   },
   {
     id: 'tuna',
@@ -166,6 +209,7 @@ export const TOPPINGS_LIST: Topping[] = [
     pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
     priceWhole: TOPPING_PRICE_WHOLE,
     category: 'specials',
+    vegan: false,
   },
   {
     id: 'pineapple',
@@ -174,6 +218,7 @@ export const TOPPINGS_LIST: Topping[] = [
     pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
     priceWhole: TOPPING_PRICE_WHOLE,
     category: 'specials',
+    vegan: true,
   },
   {
     id: 'garlic_confit',
@@ -182,6 +227,7 @@ export const TOPPINGS_LIST: Topping[] = [
     pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
     priceWhole: TOPPING_PRICE_WHOLE,
     category: 'specials',
+    vegan: true,
   },
   {
     id: 'fresh_basil',
@@ -190,6 +236,7 @@ export const TOPPINGS_LIST: Topping[] = [
     pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
     priceWhole: TOPPING_PRICE_WHOLE,
     category: 'veggies',
+    vegan: true,
   },
 ];
 

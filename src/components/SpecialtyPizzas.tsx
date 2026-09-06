@@ -42,10 +42,10 @@ export const SpecialtyPizzas: React.FC<SpecialtyPizzasProps> = ({ onAddSpecialty
   return (
     <div id="specialty-pizzas-section" className="w-full mb-8" dir="rtl">
       <h3 className="font-bold text-lg text-slate-800 mb-3 flex items-center gap-2">
-        <span>המיוחדים של שרון</span>
+        <span>נשנושים ומנות צד</span>
       </h3>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {SPECIALTY_ITEMS.map((item) => {
           const isAdded = !!addedItemIds[item.id];
           const qty = getQuantity(item.id);

@@ -1,5 +1,14 @@
 export type PizzaSizeId = 'personal' | 'family' | 'giant';
 export type CrustId = 'classic' | 'thick' | 'cheese_crust';
+export type DietaryId = 'regular' | 'vegan' | 'gluten_free';
+
+export interface DietaryOption {
+  id: DietaryId;
+  name: string;
+  icon: string;
+  extraPrice: number;
+  sizesAllowed: PizzaSizeId[];
+}
 
 export interface PizzaSize {
   id: PizzaSizeId;
@@ -28,6 +37,7 @@ export interface Topping {
   pricePerQuarter: number;
   priceWhole: number;
   category: 'veggies' | 'cheese' | 'specials';
+  vegan: boolean;
 }
 
 export interface AppliedTopping {
@@ -39,6 +49,7 @@ export interface CustomPizzaItem {
   id: string;
   size: PizzaSizeId;
   crust: CrustId;
+  dietary: DietaryId;
   sauce: 'classic_tomato' | 'spicy_tomato' | 'bianco_cream';
   appliedToppings: AppliedTopping[];
   quantity: number;

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CartItem, CustomPizzaItem, QuarterId } from '../types';
-import { PIZZERIA_CONTACT, PIZZA_SIZES, PIZZA_CRUSTS, TOPPINGS_LIST } from '../data/menuData';
+import { PIZZERIA_CONTACT, PIZZA_SIZES, PIZZA_CRUSTS, TOPPINGS_LIST, DIETARY_OPTIONS } from '../data/menuData';
 import { X, Trash2, Plus, Minus, ShoppingBag, Send, PhoneCall, Check, MapPin, User, MessageCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -63,8 +63,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       if (item.type === 'pizza') {
         const sizeObj = PIZZA_SIZES.find((s) => s.id === item.data.size);
         const crustObj = PIZZA_CRUSTS.find((c) => c.id === item.data.crust);
+        const dietaryObj = DIETARY_OPTIONS.find((d) => d.id === item.data.dietary);
 
         text += `\n🔹 *פיצה #${i + 1}:* ${item.data.quantity}x ${sizeObj?.name || ''} (₪${item.data.unitPrice})\n`;
+        if (dietaryObj && dietaryObj.id !== 'regular') {
+          text += `   - סוג: ${dietaryObj.icon} ${dietaryObj.name}\n`;
+        }
         text += `   - בצק: ${crustObj?.name || ''}\n`;
 
         if (item.data.appliedToppings.length === 0) {
@@ -234,6 +238,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 if (item.type === 'pizza') {
                   const sizeObj = PIZZA_SIZES.find((s) => s.id === item.data.size);
                   const crustObj = PIZZA_CRUSTS.find((c) => c.id === item.data.crust);
+                  const dietaryObj = DIETARY_OPTIONS.find((d) => d.id === item.data.dietary);
 
                   return (
                     <div
@@ -247,6 +252,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                             <span className="font-bold text-slate-800 text-sm">
                               {sizeObj?.name}
                             </span>
+                            {dietaryObj && dietaryObj.id !== 'regular' && (
+                              <span className="text-[10px] bg-green-50 text-green-700 border border-green-200 px-1.5 py-0.5 rounded font-bold">
+                                {dietaryObj.icon} {dietaryObj.name}
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs text-slate-500">
                             {crustObj?.name}

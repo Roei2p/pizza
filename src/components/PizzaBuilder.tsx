@@ -4,10 +4,12 @@ import {
   PIZZA_SIZES,
   PIZZA_CRUSTS,
   TOPPINGS_LIST,
+  DIETARY_OPTIONS,
 } from '../data/menuData';
 import {
   PizzaSizeId,
   CrustId,
+  DietaryId,
   QuarterId,
   PortionMode,
   AppliedTopping,
@@ -26,6 +28,7 @@ const TOPPING_CATEGORIES: { id: 'veggies' | 'cheese' | 'specials'; label: string
 ];
 
 export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
+  const [dietary, setDietary] = useState<DietaryId>('regular');
   const [selectedSize, setSelectedSize] = useState<PizzaSizeId>('family');
   const [selectedCrust, setSelectedCrust] = useState<CrustId>('classic');
   const [sauce, setSauce] = useState<'classic_tomato' | 'spicy_tomato' | 'bianco_cream'>('classic_tomato');
@@ -132,9 +135,35 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
     setAppliedToppings(appliedToppings.filter((at) => at.toppingId !== toppingId));
   };
 
+  // Dietary variant (regular / vegan / gluten-free) — constrains which sizes,
+  // crusts and toppings are offered, matching Sharon's real menu rules.
+  const dietaryObj = DIETARY_OPTIONS.find((d) => d.id === dietary) || DIETARY_OPTIONS[0];
+  const availableSizes = PIZZA_SIZES.filter((s) => dietaryObj.sizesAllowed.includes(s.id));
+  const availableCrusts = dietary === 'vegan' ? PIZZA_CRUSTS.filter((c) => c.id !== 'cheese_crust') : PIZZA_CRUSTS;
+  const availableToppings = dietary === 'vegan' ? TOPPINGS_LIST.filter((t) => t.vegan) : TOPPINGS_LIST;
+
+  const handleSetDietary = (id: typeof dietary) => {
+    setDietary(id);
+    const newDietaryObj = DIETARY_OPTIONS.find((d) => d.id === id)!;
+
+    // Gluten-free is personal-size-only with a fixed classic-style dough.
+    if (id === 'gluten_free') {
+      if (!newDietaryObj.sizesAllowed.includes(selectedSize)) setSelectedSize('personal');
+      setSelectedCrust('classic');
+    }
+
+    // Vegan drops the cheese-stuffed crust and any non-vegan toppings already applied.
+    if (id === 'vegan') {
+      if (selectedCrust === 'cheese_crust') setSelectedCrust('classic');
+      setAppliedToppings((prev) =>
+        prev.filter((at) => TOPPINGS_LIST.find((t) => t.id === at.toppingId)?.vegan)
+      );
+    }
+  };
+
   // Calculate Unit Price
-  const sizeObj = PIZZA_SIZES.find((s) => s.id === selectedSize) || PIZZA_SIZES[1];
-  const crustObj = PIZZA_CRUSTS.find((c) => c.id === selectedCrust) || PIZZA_CRUSTS[0];
+  const sizeObj = availableSizes.find((s) => s.id === selectedSize) || availableSizes[0];
+  const crustObj = availableCrusts.find((c) => c.id === selectedCrust) || availableCrusts[0];
 
   const toppingsPrice = appliedToppings.reduce((acc, item) => {
     const toppingData = TOPPINGS_LIST.find((t) => t.id === item.toppingId);
@@ -147,7 +176,7 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
     }
   }, 0);
 
-  const unitPrice = sizeObj.basePrice + crustObj.extraPrice + toppingsPrice;
+  const unitPrice = sizeObj.basePrice + dietaryObj.extraPrice + crustObj.extraPrice + toppingsPrice;
   const totalPrice = unitPrice * quantity;
 
   // Add to cart action
@@ -156,6 +185,7 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
       id: `pizza-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       size: selectedSize,
       crust: selectedCrust,
+      dietary,
       sauce,
       appliedToppings: [...appliedToppings],
       quantity,
@@ -187,7 +217,7 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
       {/* Header Banner - cinematic photo backdrop matching the welcome hero */}
       <div
         className="relative overflow-hidden rounded-2xl mb-8 shadow-lg bg-slate-900 bg-cover bg-center"
-        style={{ backgroundImage: "url('/assets/hero-pizza-poster.jpg')" }}
+        style={{ backgroundImage: `url('${import.meta.env.BASE_URL}assets/hero-pizza-poster.jpg')` }}
       >
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/75 to-slate-950/40" />
         <div className="relative p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -229,6 +259,47 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* LEFT / CENTER COLUMN: Step-by-step Builder Controls */}
         <div className="lg:col-span-7 space-y-6">
+          {/* DIETARY VARIANT SELECTOR */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+            <h3 className="font-bold text-lg text-slate-800 mb-3">סוג הפיצה</h3>
+            <div className="grid grid-cols-3 gap-2.5">
+              {DIETARY_OPTIONS.map((opt) => {
+                const isSelected = dietary === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    id={`btn-dietary-${opt.id}`}
+                    type="button"
+                    onClick={() => handleSetDietary(opt.id)}
+                    className={`p-3 rounded-xl text-center transition-all text-xs cursor-pointer ${
+                      isSelected
+                        ? 'border-2 border-red-600 bg-red-50 font-bold text-red-700 shadow-sm'
+                        : 'border border-slate-200 hover:border-slate-300 text-slate-700 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="text-lg mb-1">{opt.icon}</div>
+                    <div className="font-bold text-slate-800">{opt.name}</div>
+                    {opt.extraPrice > 0 && (
+                      <div className="text-[10px] text-red-700 font-bold mt-0.5">+₪{opt.extraPrice}</div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {dietary === 'gluten_free' && (
+              <div className="mt-3 flex items-start gap-1.5 text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-2.5">
+                <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                <span>פיצה ללא גלוטן זמינה בגודל אישי בלבד, עם בצק ייעודי קבוע (ללא שדרוג שוליים).</span>
+              </div>
+            )}
+            {dietary === 'vegan' && (
+              <div className="mt-3 flex items-start gap-1.5 text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-2.5">
+                <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                <span>בגרסה הטבעונית לא זמינים שוליים ממולאים בגבינה, וכן תוספות המכילות מוצרי חלב או דגים.</span>
+              </div>
+            )}
+          </div>
+
           {/* STEP 1: SIZE SELECTION */}
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
@@ -241,8 +312,8 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
               <span className="text-xs text-slate-500 font-medium">כולל בצק טרי ורוטב</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {PIZZA_SIZES.map((size) => {
+            <div className={`grid grid-cols-1 gap-3 ${availableSizes.length > 1 ? 'sm:grid-cols-3' : 'sm:max-w-xs'}`}>
+              {availableSizes.map((size) => {
                 const isSelected = selectedSize === size.id;
                 return (
                   <button
@@ -295,36 +366,45 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
                 <label className="block text-xs font-bold text-slate-600 mb-2">
                   סוג הבצק:
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  {PIZZA_CRUSTS.map((crust) => {
-                    const isSelected = selectedCrust === crust.id;
-                    return (
-                      <button
-                        key={crust.id}
-                        id={`btn-crust-${crust.id}`}
-                        type="button"
-                        onClick={() => setSelectedCrust(crust.id)}
-                        className={`p-3 rounded-xl text-right transition-all text-xs cursor-pointer ${
-                          isSelected
-                            ? 'border-2 border-red-600 bg-red-50 font-bold text-red-700 shadow-sm'
-                            : 'border border-slate-200 hover:border-slate-300 text-slate-700 bg-white hover:bg-slate-50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-slate-800">{crust.name}</span>
-                          {crust.extraPrice > 0 && (
-                            <span className="text-red-700 font-extrabold text-[11px]">
-                              +₪{crust.extraPrice}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[10px] text-slate-500 font-normal line-clamp-2">
-                          {crust.description}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
+                {dietary === 'gluten_free' ? (
+                  <div className="p-3 rounded-xl border-2 border-red-600 bg-red-50 text-xs">
+                    <span className="font-bold text-slate-800">בצק ייעודי ללא גלוטן</span>
+                    <p className="text-[10px] text-slate-500 font-normal mt-1">
+                      נאפה בציוד נפרד ככל האפשר, אך המטבח אינו סטרילי לחלוטין
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {availableCrusts.map((crust) => {
+                      const isSelected = selectedCrust === crust.id;
+                      return (
+                        <button
+                          key={crust.id}
+                          id={`btn-crust-${crust.id}`}
+                          type="button"
+                          onClick={() => setSelectedCrust(crust.id)}
+                          className={`p-3 rounded-xl text-right transition-all text-xs cursor-pointer ${
+                            isSelected
+                              ? 'border-2 border-red-600 bg-red-50 font-bold text-red-700 shadow-sm'
+                              : 'border border-slate-200 hover:border-slate-300 text-slate-700 bg-white hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-slate-800">{crust.name}</span>
+                            {crust.extraPrice > 0 && (
+                              <span className="text-red-700 font-extrabold text-[11px]">
+                                +₪{crust.extraPrice}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-500 font-normal line-clamp-2">
+                            {crust.description}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -484,7 +564,7 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
               </div>
 
               {TOPPING_CATEGORIES.map((cat) => {
-                const items = TOPPINGS_LIST.filter((t) => t.category === cat.id);
+                const items = availableToppings.filter((t) => t.category === cat.id);
                 if (items.length === 0) return null;
                 return (
                   <div key={cat.id}>
@@ -621,7 +701,7 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
                 </p>
               </div>
               <span className="text-xs bg-red-50 text-red-700 font-bold px-2.5 py-1 rounded-full border border-red-200">
-                {sizeObj.name}
+                {dietary !== 'regular' && `${dietaryObj.icon} `}{sizeObj.name}
               </span>
             </div>
 
@@ -782,6 +862,12 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
                 <span>{sizeObj.name}</span>
                 <span className="font-bold text-slate-800">₪{sizeObj.basePrice}</span>
               </div>
+              {dietaryObj.extraPrice > 0 && (
+                <div className="flex justify-between">
+                  <span>{dietaryObj.icon} {dietaryObj.name}</span>
+                  <span className="font-bold text-slate-800">+₪{dietaryObj.extraPrice}</span>
+                </div>
+              )}
               {crustObj.extraPrice > 0 && (
                 <div className="flex justify-between">
                   <span>{crustObj.name}</span>

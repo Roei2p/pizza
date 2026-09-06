@@ -191,6 +191,9 @@ export const StickyContactBars: React.FC = () => {
                     ⭐ {PIZZERIA_CONTACT.kosher}
                   </p>
                 </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  ⚠️ {PIZZERIA_CONTACT.allergenNote}
+                </p>
               </div>
 
               <a

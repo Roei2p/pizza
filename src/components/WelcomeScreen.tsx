@@ -23,8 +23,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onContinue }) => {
       <video
         ref={videoRef}
         className="absolute inset-0 w-full h-full object-cover"
-        src="/assets/hero-pizza.mp4"
-        poster="/assets/hero-pizza-poster.jpg"
+        src={`${import.meta.env.BASE_URL}assets/hero-pizza.mp4`}
+        poster={`${import.meta.env.BASE_URL}assets/hero-pizza-poster.jpg`}
         autoPlay
         muted
         loop
