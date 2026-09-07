@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CartItem, CustomPizzaItem, QuarterId } from '../types';
 import { PIZZERIA_CONTACT, PIZZA_SIZES, PIZZA_CRUSTS, TOPPINGS_LIST, DIETARY_OPTIONS } from '../data/menuData';
-import { X, Trash2, Plus, Minus, ShoppingBag, Send, PhoneCall, Check, MapPin, User, MessageCircle, RotateCcw, Copy, Banknote, CreditCard, Smartphone } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ShoppingBag, Send, PhoneCall, Check, MapPin, User, MessageCircle, RotateCcw, Copy, Banknote, CreditCard, Smartphone } from '../icons/coreui';
 import confetti from 'canvas-confetti';
 import { OrderTracker } from './OrderTracker';
 import { CustomerProfile, loadCustomerProfile, saveCustomerProfile } from '../utils/customerProfile';

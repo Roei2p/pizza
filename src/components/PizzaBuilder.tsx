@@ -15,7 +15,8 @@ import {
   AppliedTopping,
   CustomPizzaItem,
 } from '../types';
-import { Check, Plus, Minus, Info, Sparkles, Trash2, PieChart, RotateCcw, Box, LayoutGrid } from 'lucide-react';
+import { Check, Plus, Minus, Info, Sparkles, Trash2, PieChart, RotateCcw, LayoutGrid } from '../icons/coreui';
+import { Box } from 'lucide-react';
 import { TiltCard } from './TiltCard';
 
 const Pizza3DView = lazy(() => import('./Pizza3DView').then((m) => ({ default: m.Pizza3DView })));

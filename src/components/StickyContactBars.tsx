@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { PhoneCall, MessageCircle, HelpCircle, X, ShieldCheck } from 'lucide-react';
+import { PhoneCall, MessageCircle, HelpCircle, X, ShieldCheck } from '../icons/coreui';
 import { PIZZERIA_CONTACT } from '../data/menuData';
 
 export const StickyContactBars: React.FC = () => {

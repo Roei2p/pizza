@@ -10,7 +10,7 @@ import { CartDrawer } from './components/CartDrawer';
 import { StickyContactBars } from './components/StickyContactBars';
 import { CartItem, CustomPizzaItem, CartDrinkItem, CartDessertItem, CartSpecialtyItem } from './types';
 import { PIZZERIA_CONTACT } from './data/menuData';
-import { Pizza, GlassWater, Cake } from 'lucide-react';
+import { Pizza, GlassWater, Cake } from './icons/coreui';
 
 export default function App() {
   // Requirement 1: Welcome screen ("הגעתם לאתר של שרון לחץ כאן להמשיך")

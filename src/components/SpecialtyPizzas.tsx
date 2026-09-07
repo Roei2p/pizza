@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { SPECIALTY_ITEMS } from '../data/menuData';
 import { SpecialtyItem, CartSpecialtyItem } from '../types';
-import { Plus, Minus, Check, ShoppingBag } from 'lucide-react';
+import { Plus, Minus, Check, ShoppingBag } from '../icons/coreui';
 import { TiltCard } from './TiltCard';
 
 interface SpecialtyPizzasProps {

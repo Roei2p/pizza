@@ -1,6 +1,6 @@
 import React from 'react';
 import { PIZZERIA_CONTACT } from '../data/menuData';
-import { ShoppingBag } from 'lucide-react';
+import { ShoppingBag } from '../icons/coreui';
 
 interface HeaderProps {
   cartCount: number;

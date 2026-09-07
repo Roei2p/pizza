@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Receipt, ChefHat, Flame, Package, Bike, PartyPopper, Check, PhoneCall } from 'lucide-react';
+import { Receipt, Flame, Bike, PartyPopper, Check, PhoneCall } from '../icons/coreui';
+import { ChefHat, Package } from 'lucide-react';
 import { PIZZERIA_CONTACT } from '../data/menuData';
 
 interface OrderTrackerProps {

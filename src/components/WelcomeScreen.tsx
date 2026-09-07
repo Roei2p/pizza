@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Clock, Award, Flame, Star } from 'lucide-react';
+import { ArrowLeft, Clock, Flame, Star } from '../icons/coreui';
+import { Award } from 'lucide-react';
 import { PIZZERIA_CONTACT } from '../data/menuData';
 
 interface WelcomeScreenProps {

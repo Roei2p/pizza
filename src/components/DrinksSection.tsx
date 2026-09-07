@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { DRINKS_LIST } from '../data/menuData';
 import { DrinkItem, CartDrinkItem } from '../types';
-import { Plus, Minus, Check, ShoppingBag, Sparkles } from 'lucide-react';
+import { Plus, Minus, Check, ShoppingBag, Sparkles } from '../icons/coreui';
 import { TiltCard } from './TiltCard';
 
 interface DrinksSectionProps {

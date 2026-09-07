@@ -12,6 +12,8 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@coreui/icons": "3.1.0",
+    "@coreui/icons-react": "2.3.0",
     "@google/genai": "^2.4.0",
     "@react-three/drei": "^10.7.8",
     "@react-three/fiber": "^9.7.0",
