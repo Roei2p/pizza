@@ -40,6 +40,20 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+      - name: Re-download uploaded artifact and inspect (temporary)
+        uses: actions/download-artifact@v4
+        with:
+          name: github-pages
+          path: /tmp/reverify
+      - name: Inspect re-downloaded artifact (temporary)
+        run: |
+          ls -la /tmp/reverify
+          mkdir -p /tmp/reverify-extracted
+          tar -xf /tmp/reverify/artifact.tar -C /tmp/reverify-extracted
+          echo "=== extracted listing ==="
+          find /tmp/reverify-extracted -maxdepth 3
+          echo "=== extracted index.html ==="
+          cat /tmp/reverify-extracted/index.html
 
   deploy:
     needs: build
