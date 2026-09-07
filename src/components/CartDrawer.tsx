@@ -4,6 +4,7 @@ import { CartItem, CustomPizzaItem, QuarterId } from '../types';
 import { PIZZERIA_CONTACT, PIZZA_SIZES, PIZZA_CRUSTS, TOPPINGS_LIST, DIETARY_OPTIONS } from '../data/menuData';
 import { X, Trash2, Plus, Minus, ShoppingBag, Send, PhoneCall, Check, MapPin, User, MessageCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { OrderTracker } from './OrderTracker';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -176,37 +177,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           </div>
         </div>
 
-        {/* Success Screen after submission */}
+        {/* Order Tracker after submission */}
         {orderCompleted ? (
-          <div className="p-8 text-center flex-1 flex flex-col items-center justify-center bg-white">
-            <div className="w-20 h-20 rounded-full bg-green-50 border border-green-200 text-green-600 flex items-center justify-center text-4xl mb-4 shadow-xs">
-              ✓
-            </div>
-            <h4 className="text-2xl font-black text-slate-800 mb-2">ההזמנה בדרך לשרון!</h4>
-            <p className="text-slate-600 text-sm mb-6 max-w-xs leading-relaxed">
-              הפרטים נשלחו בהצלחה לוואטסאפ של שרון. הפיצה תיכנס לאפייה חמה מיד!
-            </p>
-            <div className="space-y-3 w-full max-w-xs">
-              <a
-                href={`tel:${PIZZERIA_CONTACT.phoneDial}`}
-                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl flex items-center justify-center gap-2 text-sm shadow-xs transition-all"
-              >
-                <PhoneCall className="w-4 h-4" />
-                <span>בירור מצב הזמנה: {PIZZERIA_CONTACT.phoneDisplay}</span>
-              </a>
-              <button
-                type="button"
-                onClick={() => {
-                  onClearCart();
-                  setOrderCompleted(false);
-                  onClose();
-                }}
-                className="w-full py-3 bg-slate-100 text-slate-700 font-bold rounded-xl text-sm hover:bg-slate-200 border border-slate-200 transition-all cursor-pointer"
-              >
-                התחל הזמנה חדשה
-              </button>
-            </div>
-          </div>
+          <OrderTracker
+            deliveryType={deliveryType}
+            onNewOrder={() => {
+              onClearCart();
+              setOrderCompleted(false);
+              onClose();
+            }}
+          />
         ) : cartItems.length === 0 ? (
           /* Empty Cart State */
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white">
