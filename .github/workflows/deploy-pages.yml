@@ -40,3 +40,14 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+      - name: Verify live response (debugging aid)
+        run: |
+          echo "Deployed page_url: ${{ steps.deployment.outputs.page_url }}"
+          sleep 10
+          echo "=== HEAD/body https://roei2p.github.io/pizza/ ==="
+          curl -sS -D - -o /tmp/root.html "https://roei2p.github.io/pizza/?ci-verify=$(date +%s)"
+          echo "=== First 2000 bytes of body ==="
+          head -c 2000 /tmp/root.html
+          echo ""
+          echo "=== module script tag found in body ==="
+          grep -oE '<script[^>]*type="module"[^>]*>' /tmp/root.html || echo "NONE FOUND"
