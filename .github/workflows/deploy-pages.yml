@@ -24,6 +24,16 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - run: bun run build:gh-pages
+      - name: Debug built output (temporary)
+        run: |
+          echo "=== bun/vite versions ==="
+          bun --version
+          bunx vite --version || true
+          echo "=== dist listing ==="
+          ls -la dist
+          ls -la dist/assets | head -20
+          echo "=== dist/index.html full content ==="
+          cat dist/index.html
       - uses: actions/configure-pages@v5
         with:
           enablement: true
