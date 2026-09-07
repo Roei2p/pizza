@@ -4,5 +4,11 @@ dist/
 coverage/
 .DS_Store
 *.log
+.firebase/
 .env*
 !.env.example
+# Firebase's web config isn't a secret (see FIREBASE_SETUP.md) — committing
+# it is how the GitHub Pages build (`vite build --mode gh-pages`) picks it
+# up, since there's no server to inject it at runtime. .env.local (git-
+# ignored, machine-specific) always overrides this for local dev.
+!.env.gh-pages

@@ -1,8 +1,9 @@
 import { CartItem } from '../types';
 
-// Client-only "returning customer" memory. There's no backend/accounts on
-// this static site — orders go out as a WhatsApp message — so this only
-// recognizes the same browser/device, not the customer across devices.
+// Client-only "returning customer" memory, keyed to this one browser —
+// the instant, no-network version of recognition. Cross-device recognition
+// (same phone number, any device) is handled separately by
+// lib/customers.ts, backed by Firestore.
 const STORAGE_KEY = 'sharon-pizza:customer-profile:v1';
 
 export interface CustomerProfile {

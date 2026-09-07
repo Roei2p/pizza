@@ -3,17 +3,22 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Receipt, Flame, Bike, PartyPopper, Check, PhoneCall } from '../icons/coreui';
 import { ChefHat, Package } from 'lucide-react';
 import { PIZZERIA_CONTACT } from '../data/menuData';
+import { OrderStatus } from '../types';
+import { subscribeToOrder } from '../lib/orders';
+import { DELIVERY_STATUSES, PICKUP_STATUSES } from '../lib/orderStages';
 
 interface OrderTrackerProps {
   deliveryType: 'delivery' | 'pickup';
   onNewOrder: () => void;
+  /** When set, live status comes from Sharon's dashboard via Firestore. */
+  orderId?: string;
 }
 
-// This is a simulated progress animation for delight, not a live feed from
-// the kitchen — orders here are sent as a WhatsApp message, there's no POS
-// integration to report real status. Stage timing below is deliberately
-// compressed to a short, watchable demo; only the final ETA countdown uses
-// a realistic minute estimate.
+// Fallback for when there's no live order to follow (no orderId — e.g. the
+// Firestore write failed, or no backend is configured yet): a simulated
+// progress animation for delight, timed rather than fed by a real kitchen.
+// Stage timing is deliberately compressed to a short, watchable demo; only
+// the final ETA countdown uses a realistic minute estimate.
 const STAGE_TIMES_SEC = [0, 8, 20, 35, 48]; // when each stage before "on the way" starts
 const PICKUP_READY_MINUTES = 18;
 
@@ -23,7 +28,7 @@ function parseEtaMinutes(range: string): number {
   return Math.round((min + max) / 2);
 }
 
-export const OrderTracker: React.FC<OrderTrackerProps> = ({ deliveryType, onNewOrder }) => {
+export const OrderTracker: React.FC<OrderTrackerProps> = ({ deliveryType, onNewOrder, orderId }) => {
   const [elapsedSec, setElapsedSec] = useState(0);
   const startedAt = useMemo(() => Date.now(), []);
   const totalEtaMinutes = useMemo(
@@ -32,12 +37,27 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({ deliveryType, onNewO
   );
   const totalEtaSec = totalEtaMinutes * 60;
 
+  // Live status from Sharon's dashboard, when this order has one.
+  const [liveStatus, setLiveStatus] = useState<OrderStatus | null>(null);
+  const [liveConnected, setLiveConnected] = useState(false);
+
   useEffect(() => {
+    if (!orderId) return;
+    const unsubscribe = subscribeToOrder(orderId, (order) => {
+      setLiveConnected(true);
+      setLiveStatus(order?.status ?? null);
+    });
+    return unsubscribe;
+  }, [orderId]);
+
+  useEffect(() => {
+    // Only the simulated fallback needs a ticking clock.
+    if (liveConnected) return;
     const id = setInterval(() => {
       setElapsedSec(Math.floor((Date.now() - startedAt) / 1000));
     }, 1000);
     return () => clearInterval(id);
-  }, [startedAt]);
+  }, [startedAt, liveConnected]);
 
   const stages =
     deliveryType === 'delivery'
@@ -55,17 +75,27 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({ deliveryType, onNewO
           { label: 'ההזמנה מוכנה לאיסוף', icon: Package },
         ];
 
-  const finished = elapsedSec >= totalEtaSec;
-  const activeIndex = finished
+  const statusList = deliveryType === 'delivery' ? DELIVERY_STATUSES : PICKUP_STATUSES;
+
+  const simulatedFinished = elapsedSec >= totalEtaSec;
+  const simulatedIndex = simulatedFinished
     ? stages.length - 1
-    : STAGE_TIMES_SEC.slice(0, stages.length).reduce(
-        (acc, t, i) => (elapsedSec >= t ? i : acc),
-        0,
-      );
+    : STAGE_TIMES_SEC.slice(0, stages.length).reduce((acc, t, i) => (elapsedSec >= t ? i : acc), 0);
+
+  const finished = liveConnected ? liveStatus === 'completed' : simulatedFinished;
+  const activeIndex = liveConnected
+    ? finished
+      ? stages.length - 1
+      : Math.max(0, statusList.indexOf(liveStatus ?? 'received'))
+    : simulatedIndex;
 
   const remainingSec = Math.max(0, totalEtaSec - elapsedSec);
   const remainingMin = Math.ceil(remainingSec / 60);
-  const progressPct = finished ? 100 : Math.min(100, (elapsedSec / totalEtaSec) * 100);
+  const progressPct = finished
+    ? 100
+    : liveConnected
+      ? ((activeIndex + 1) / stages.length) * 100
+      : Math.min(100, (elapsedSec / totalEtaSec) * 100);
 
   return (
     <div dir="rtl" className="p-6 sm:p-8 flex-1 flex flex-col bg-white overflow-y-auto">
@@ -90,19 +120,27 @@ export const OrderTracker: React.FC<OrderTrackerProps> = ({ deliveryType, onNewO
           ) : (
             <motion.div key="eta" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
-                {deliveryType === 'delivery' ? 'זמן הגעה משוער' : 'מוכן לאיסוף בעוד'}
+                {liveConnected
+                  ? 'סטטוס חי מהמטבח'
+                  : deliveryType === 'delivery'
+                    ? 'זמן הגעה משוער'
+                    : 'מוכן לאיסוף בעוד'}
               </p>
-              <div className="flex items-center justify-center gap-2">
-                <motion.span
-                  key={remainingMin}
-                  initial={{ opacity: 0, y: -6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-4xl font-black text-red-700"
-                >
-                  {remainingMin}
-                </motion.span>
-                <span className="text-lg font-bold text-slate-500">דקות</span>
-              </div>
+              {liveConnected ? (
+                <p className="text-xl font-black text-red-700">{stages[activeIndex]?.label}</p>
+              ) : (
+                <div className="flex items-center justify-center gap-2">
+                  <motion.span
+                    key={remainingMin}
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-4xl font-black text-red-700"
+                  >
+                    {remainingMin}
+                  </motion.span>
+                  <span className="text-lg font-bold text-slate-500">דקות</span>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

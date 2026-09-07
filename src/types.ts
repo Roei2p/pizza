@@ -132,3 +132,26 @@ export interface OrderCheckoutInfo {
   paymentMethod: 'cash' | 'credit' | 'bit';
   notes: string;
 }
+
+// Real order status, set by Sharon from her live dashboard — distinct from
+// OrderTracker's own timer-based simulation, which is what customers see
+// when there's no live backend configured (no Firebase project set up yet).
+export type OrderStatus = 'received' | 'dough' | 'oven' | 'packing' | 'out_for_delivery' | 'ready_pickup' | 'completed';
+
+export interface OrderDoc {
+  id?: string;
+  customerName: string;
+  customerPhone: string;
+  deliveryType: 'delivery' | 'pickup';
+  city: string;
+  street: string;
+  paymentMethod: 'cash' | 'credit' | 'bit';
+  notes: string;
+  items: CartItem[];
+  subtotal: number;
+  deliveryFee: number;
+  grandTotal: number;
+  status: OrderStatus;
+  createdAt: number;
+  updatedAt: number;
+}
