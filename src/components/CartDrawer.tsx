@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CartItem, CustomPizzaItem, QuarterId } from '../types';
 import { PIZZERIA_CONTACT, PIZZA_SIZES, PIZZA_CRUSTS, TOPPINGS_LIST, DIETARY_OPTIONS } from '../data/menuData';
-import { X, Trash2, Plus, Minus, ShoppingBag, Send, PhoneCall, Check, MapPin, User, MessageCircle } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ShoppingBag, Send, PhoneCall, Check, MapPin, User, MessageCircle, RotateCcw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { OrderTracker } from './OrderTracker';
+import { CustomerProfile, loadCustomerProfile, saveCustomerProfile } from '../utils/customerProfile';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface CartDrawerProps {
   onUpdateQuantity: (index: number, newQty: number) => void;
   onRemoveItem: (index: number) => void;
   onClearCart: () => void;
+  onRestoreOrder: (items: CartItem[]) => void;
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
@@ -22,12 +24,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onUpdateQuantity,
   onRemoveItem,
   onClearCart,
+  onRestoreOrder,
 }) => {
-  const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
-  const [customerName, setCustomerName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [city, setCity] = useState('');
-  const [street, setStreet] = useState('');
+  // Recognize a returning visitor on this same browser (no accounts/backend
+  // here — orders go out as a WhatsApp message) and prefill their details.
+  const [savedProfile] = useState<CustomerProfile | null>(() => loadCustomerProfile());
+  const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>(savedProfile?.deliveryType ?? 'delivery');
+  const [customerName, setCustomerName] = useState(savedProfile?.name ?? '');
+  const [phone, setPhone] = useState(savedProfile?.phone ?? '');
+  const [city, setCity] = useState(savedProfile?.city ?? '');
+  const [street, setStreet] = useState(savedProfile?.street ?? '');
   const [notes, setNotes] = useState('');
   const [orderCompleted, setOrderCompleted] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ name?: boolean; phone?: boolean }>({});
@@ -123,6 +129,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       spread: 70,
       origin: { y: 0.6 },
     });
+    saveCustomerProfile({
+      name: customerName.trim(),
+      phone: phone.trim(),
+      deliveryType,
+      city,
+      street,
+      lastOrderAt: Date.now(),
+      lastOrderItems: cartItems,
+    });
     const url = `https://wa.me/${PIZZERIA_CONTACT.whatsappNumber}?text=${generateWhatsAppOrderText()}`;
     window.open(url, '_blank');
     setOrderCompleted(true);
@@ -204,6 +219,25 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             >
               התחל להרכיב פיצה
             </button>
+
+            {savedProfile && savedProfile.lastOrderItems.length > 0 && (
+              <div className="mt-6 w-full max-w-xs bg-amber-50 border border-amber-200 rounded-xl p-4 text-right">
+                <p className="text-xs font-bold text-slate-800 mb-1">
+                  שלום שוב{savedProfile.name ? `, ${savedProfile.name}` : ''}! 👋
+                </p>
+                <p className="text-[11px] text-slate-500 mb-3">
+                  זיהינו אתכם מהזמנה קודמת. אפשר להזמין שוב באותה הרכבה בלחיצה אחת.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onRestoreOrder(savedProfile.lastOrderItems)}
+                  className="w-full py-2.5 bg-white hover:bg-amber-100 text-amber-800 font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 border border-amber-300 transition-all cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>הזמינו שוב את ההזמנה האחרונה שלכם</span>
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           /* Cart Content & Checkout */
@@ -502,9 +536,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
             {/* Customer Contact Details */}
             <div className="bg-white rounded-xl p-4 border border-slate-200 space-y-3">
-              <label className="block text-xs font-bold text-slate-800">
-                פרטי הלקוח למשלוח ואישור:
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-800">
+                  פרטי הלקוח למשלוח ואישור:
+                </label>
+                {savedProfile && (
+                  <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-medium">
+                    מולאו אוטומטית מהזמנה קודמת
+                  </span>
+                )}
+              </div>
               <div className="space-y-2">
                 <div>
                   <input

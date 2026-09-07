@@ -126,6 +126,17 @@ export default function App() {
     setCartItems([]);
   };
 
+  // Restores a past order's items into the (empty) cart, for the "order
+  // your usual again" quick-reorder shortcut. Ids are regenerated so they
+  // never collide with a previous restore or newly-added items.
+  const handleRestoreOrder = (items: CartItem[]) => {
+    const refreshed = items.map((item, i) => ({
+      ...item,
+      data: { ...item.data, id: `restored-${Date.now()}-${i}` },
+    })) as CartItem[];
+    setCartItems((prev) => [...prev, ...refreshed]);
+  };
+
   // Calculate cart badge counts and price
   const cartTotalCount = cartItems.reduce((acc, item) => acc + item.data.quantity, 0);
   const cartTotalPrice = cartItems.reduce(
@@ -255,6 +266,7 @@ export default function App() {
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveItem}
         onClearCart={handleClearCart}
+        onRestoreOrder={handleRestoreOrder}
       />
     </div>
   );
