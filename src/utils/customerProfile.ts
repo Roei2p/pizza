@@ -11,6 +11,7 @@ export interface CustomerProfile {
   deliveryType: 'delivery' | 'pickup';
   city: string;
   street: string;
+  paymentMethod: 'cash' | 'credit' | 'bit';
   lastOrderAt: number;
   lastOrderItems: CartItem[];
 }
