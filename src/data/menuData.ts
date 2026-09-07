@@ -98,6 +98,7 @@ export const SPECIALTY_ITEMS: SpecialtyItem[] = [
     description: 'מלאווח חם עם רוטב פיצה וגבינה. ניתן להוסיף תוספות בתשלום.',
     price: 28,
     icon: '🫓',
+    image: `${import.meta.env.BASE_URL}assets/malawach-pizza.jpg`,
   },
   {
     id: 'mozzarella_sticks',
@@ -105,6 +106,7 @@ export const SPECIALTY_ITEMS: SpecialtyItem[] = [
     description: 'אצבעות פריכות במילוי גבינת מוצרלה נמסה',
     price: 25,
     icon: '🧀',
+    image: `${import.meta.env.BASE_URL}assets/mozzarella-sticks.jpg`,
   },
   {
     id: 'gouda_rings',
@@ -112,6 +114,7 @@ export const SPECIALTY_ITEMS: SpecialtyItem[] = [
     description: 'טבעות פריכות במילוי גבינת גאודה',
     price: 25,
     icon: '🥯',
+    image: `${import.meta.env.BASE_URL}assets/gouda-rings.jpg`,
   },
 ];
 
@@ -344,43 +347,11 @@ export const DRINKS_LIST: DrinkItem[] = [
 
 export const DESSERTS_LIST: DessertItem[] = [
   {
-    id: 'calzone_nutella',
-    name: 'קלצונה שוקולד נוטלה ומרשמלו',
-    description: 'מאפה איטלקי חם נאפה בתנור אבן, ממולא בנוטלה עשירה, מרשמלו נמס ושברי אגוזים',
-    price: 36,
-    badge: 'מומלץ השף ⭐',
-    image: 'https://images.unsplash.com/photo-1579954115545-a95591f28bfc?w=400&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'malabi_home',
-    name: 'מלבי שמנת אסלי של שרון',
-    description: 'מלבי קרמי ועשיר מבושל משמנת אמיתית, מוגש עם סירופ מי ורדים, קוקוס קלוי ובוטנים',
-    price: 24,
-    badge: 'מתכון ביתי',
-    image: 'https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?w=400&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'chocolate_fudge_cake',
-    name: 'עוגת פאדג׳ שוקולד חמה',
-    description: 'עוגת שוקולד עשירה ונימוחה עם ליבת שוקולד חם נוזל',
-    price: 34,
-    badge: 'שוקולד מושחת',
-    image: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=400&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'churros_dulce',
-    name: 'אצבעות צ׳ורוס פריכות',
-    description: '6 מקלות צ׳ורוס מצופים בסוכר וקינמון, מוגשים לצד צנצנת ריבת חלב ארגנטינאית',
-    price: 32,
-    badge: 'פריך וחם',
-    image: 'https://images.unsplash.com/photo-1624300629298-e9de39c13be5?w=400&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'ben_jerry_pint',
-    name: 'גלידת בן אנד ג׳ריס (פיינט)',
-    description: 'מגוון טעמים אהובים: קרם ברולה / פאדג׳ שוקולד / עוגיות בצק',
-    price: 29,
-    badge: 'צונן ומתוק',
-    image: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400&auto=format&fit=crop&q=80',
+    id: 'malawach_chocolate',
+    name: 'פיצה מלוואח שוקולד',
+    description: 'מלאווח עם שוקולד מעל.',
+    price: 28,
+    badge: 'מתוק וחם',
+    image: `${import.meta.env.BASE_URL}assets/malawach-chocolate.jpg`,
   },
 ];

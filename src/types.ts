@@ -103,6 +103,7 @@ export interface SpecialtyItem {
   description: string;
   price: number;
   icon: string;
+  image?: string;
   badge?: string;
 }
 

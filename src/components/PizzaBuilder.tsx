@@ -300,9 +300,17 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
               })}
             </div>
             {dietary === 'gluten_free' && (
-              <div className="mt-3 flex items-start gap-1.5 text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-2.5">
-                <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                <span>פיצה ללא גלוטן זמינה בגודל אישי בלבד, עם בצק ייעודי קבוע (ללא שדרוג שוליים).</span>
+              <div className="mt-3 flex items-start gap-3 text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-2.5">
+                <img
+                  src={`${import.meta.env.BASE_URL}assets/pizza-gluten-free.jpg`}
+                  alt="פיצה ללא גלוטן - בצק מרובע ייעודי"
+                  className="w-16 h-16 rounded-lg object-cover shrink-0 border border-slate-200"
+                  loading="lazy"
+                />
+                <div className="flex items-start gap-1.5 pt-0.5">
+                  <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                  <span>פיצה ללא גלוטן זמינה בגודל אישי בלבד, עם בצק מרובע ייעודי קבוע (ללא שדרוג שוליים).</span>
+                </div>
               </div>
             )}
             {dietary === 'vegan' && (

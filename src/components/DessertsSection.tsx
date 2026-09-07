@@ -51,10 +51,10 @@ export const DessertsSection: React.FC<DessertsSectionProps> = ({ onAddDessert }
             <span>סיום מתוק ומפנק</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
-            אופציית קינוחים 🍰
+            קינוחים 🍰
           </h2>
           <p className="text-slate-600 text-sm sm:text-base leading-relaxed mt-1">
-            מאפי שוקולד חמים מהתנור, קלצונה נוטלה מושחת, מלבי אסלי וגלידות משובחות.
+            מלאווח חם מהתנור עם שוקולד מעל, לסיום מתוק לארוחה.
           </p>
         </div>
       </div>

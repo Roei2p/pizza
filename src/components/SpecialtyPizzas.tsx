@@ -57,8 +57,12 @@ export const SpecialtyPizzas: React.FC<SpecialtyPizzasProps> = ({ onAddSpecialty
               id={`specialty-card-${item.id}`}
               className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm hover:shadow-lg transition-shadow flex items-center gap-4"
             >
-              <div className="w-16 h-16 shrink-0 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-3xl">
-                {item.icon}
+              <div className="w-16 h-16 shrink-0 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-3xl overflow-hidden">
+                {item.image ? (
+                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                ) : (
+                  item.icon
+                )}
               </div>
 
               <div className="flex-1 min-w-0">
