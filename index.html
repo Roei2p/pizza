@@ -4,23 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>הפיצה של שרון | תפריט והזמנות אונליין</title>
-    <meta name="description" content="הזמנת פיצות בוטיק חמות מהתנור, שתייה קרה וקינוחים אצל שרון. התאמת תוספות לפי משולשים ורבעים." />
-    <meta property="og:title" content="הפיצה של שרון | תפריט והזמנות אונליין" />
-    <meta property="og:description" content="הזמנת פיצות בוטיק חמות מהתנור, שתייה קרה וקינוחים אצל שרון. התאמת תוספות לפי משולשים ורבעים." />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://roei2p.github.io/pizza/assets/hero-pizza-poster-v2.jpg" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="https://roei2p.github.io/pizza/assets/hero-pizza-poster-v2.jpg" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍕</text></svg>" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet">
+
     <script>
       // Diagnostic-only, dependency-free classic script (never a module),
-      // so it runs even if the main app script fails to load or parse.
-      // If #root is still empty a few seconds after load, show whatever
-      // we caught directly on-screen instead of leaving a blank page —
-      // the only way to see errors on a phone with no devtools attached.
+      // deliberately the very first thing in <head> — before any external
+      // resource (fonts, icons, the app bundle). A render-blocking
+      // <link rel="stylesheet"> placed earlier can stall a later <script>
+      // tag's execution until that stylesheet resolves; if the font host
+      // is slow or unreachable on a given network, that would silently
+      // block this diagnostic too. Being first avoids that entirely, so
+      // it always runs and can show whatever we caught directly on-screen
+      // instead of leaving a blank page — the only way to see errors on a
+      // phone with no devtools attached.
       //
       // useCapture:true matters here: a <script>/<link> resource load
       // failure (404, network error, wrong MIME) dispatches a non-
@@ -65,36 +60,91 @@
           document.body.appendChild(box);
         }
 
+        function withTimeout(promise, ms, label) {
+          return Promise.race([
+            promise,
+            new Promise(function (_, reject) {
+              setTimeout(function () {
+                reject(new Error(label + ' timed out after ' + ms + 'ms'));
+              }, ms);
+            }),
+          ]);
+        }
+
         setTimeout(function () {
           var root = document.getElementById('root');
           if (root && root.firstChild) return;
-          // Active check: fetch the app's own script tag to see exactly
-          // what came back (status code / content-type), in case a
-          // carrier or network proxy silently rewrote or truncated it
-          // rather than producing a normal browser-visible error.
+
+          // Active checks run in parallel: (1) the app's own script tag,
+          // to see exactly what came back — status/content-type/body —
+          // in case a carrier or network proxy silently rewrote or
+          // truncated it rather than producing a normal browser-visible
+          // error; (2) the Google Fonts host, on a totally different
+          // domain than github.io, as a direct test of "is some other
+          // required host actually reachable on this network."
           var appScript = document.querySelector('script[type="module"][src]');
           var src = appScript ? appScript.src : null;
-          if (!src) {
-            showFallback();
-            return;
-          }
-          fetch(src, { cache: 'no-store' })
-            .then(function (res) {
-              return res.text().then(function (body) {
-                showFallback(
-                  'Fetch of app script (' + src + '): HTTP ' + res.status +
-                  ', content-type=' + res.headers.get('content-type') +
-                  ', length=' + body.length +
-                  ', starts with: ' + JSON.stringify(body.slice(0, 80))
-                );
-              });
+
+          var scriptCheck = !src
+            ? Promise.resolve('No <script type="module"> tag found in the document.')
+            : withTimeout(fetch(src, { cache: 'no-store' }), 6000, 'App script fetch')
+                .then(function (res) {
+                  return res.text().then(function (body) {
+                    return (
+                      'Fetch of app script (' + src + '): HTTP ' + res.status +
+                      ', content-type=' + res.headers.get('content-type') +
+                      ', length=' + body.length +
+                      ', starts with: ' + JSON.stringify(body.slice(0, 80))
+                    );
+                  });
+                })
+                .catch(function (err) {
+                  return 'Fetch of app script (' + src + ') failed: ' + err;
+                });
+
+          var fontsCheck = withTimeout(
+            fetch('https://fonts.googleapis.com/css2?family=Rubik', { mode: 'no-cors', cache: 'no-store' }),
+            6000,
+            'Fonts host fetch'
+          )
+            .then(function () {
+              return 'fonts.googleapis.com: reachable';
             })
             .catch(function (err) {
-              showFallback('Fetch of app script (' + src + ') threw: ' + err);
+              return 'fonts.googleapis.com: UNREACHABLE — ' + err;
             });
+
+          Promise.all([scriptCheck, fontsCheck]).then(function (results) {
+            showFallback(results.join('\n'));
+          });
         }, 4000);
       })();
     </script>
+
+    <meta name="description" content="הזמנת פיצות בוטיק חמות מהתנור, שתייה קרה וקינוחים אצל שרון. התאמת תוספות לפי משולשים ורבעים." />
+    <meta property="og:title" content="הפיצה של שרון | תפריט והזמנות אונליין" />
+    <meta property="og:description" content="הזמנת פיצות בוטיק חמות מהתנור, שתייה קרה וקינוחים אצל שרון. התאמת תוספות לפי משולשים ורבעים." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://roei2p.github.io/pizza/assets/hero-pizza-poster-v2.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://roei2p.github.io/pizza/assets/hero-pizza-poster-v2.jpg" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍕</text></svg>" />
+
+    <!-- Loaded non-render-blocking: a slow/unreachable font host must
+         never stall the rest of the page (or the diagnostic script
+         above) from painting. media="print" + onload swap is the
+         standard async-CSS trick; the <noscript> covers JS-disabled. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap"
+      rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet" />
+    </noscript>
   </head>
   <body class="bg-slate-50 text-slate-800 font-['Rubik',sans-serif] antialiased selection:bg-red-600 selection:text-white min-h-screen">
     <div id="root"></div>
