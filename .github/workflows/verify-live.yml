@@ -1,0 +1,27 @@
+name: Verify Live Site
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch live site and report headers/body
+        run: |
+          echo "=== HEAD https://roei2p.github.io/pizza/ ==="
+          curl -sS -D - -o /tmp/root.html "https://roei2p.github.io/pizza/?ci-verify=$(date +%s)"
+          echo "=== First 3000 bytes of body ==="
+          head -c 3000 /tmp/root.html
+          echo ""
+          echo "=== Script/link tags in body ==="
+          grep -oE '<(script|link)[^>]*(src|href)="[^"]*"[^>]*>' /tmp/root.html || true
+          echo ""
+          echo "=== Trying the referenced app script directly ==="
+          SCRIPT_SRC=$(grep -oE '<script[^>]*type="module"[^>]*src="[^"]*"' /tmp/root.html | grep -oE 'src="[^"]*"' | head -1 | sed 's/src="//;s/"$//')
+          echo "Found script src: $SCRIPT_SRC"
+          if [ -n "$SCRIPT_SRC" ]; then
+            FULL_URL="https://roei2p.github.io$SCRIPT_SRC"
+            echo "=== HEAD $FULL_URL ==="
+            curl -sS -o /dev/null -D - "$FULL_URL"
+          fi
