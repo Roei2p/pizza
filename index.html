@@ -19,35 +19,79 @@
       // Diagnostic-only, dependency-free classic script (never a module),
       // so it runs even if the main app script fails to load or parse.
       // If #root is still empty a few seconds after load, show whatever
-      // error we caught directly on-screen instead of leaving a blank
-      // page — this is the only way to see errors on a phone with no
-      // devtools attached.
+      // we caught directly on-screen instead of leaving a blank page —
+      // the only way to see errors on a phone with no devtools attached.
+      //
+      // useCapture:true matters here: a <script>/<link> resource load
+      // failure (404, network error, wrong MIME) dispatches a non-
+      // bubbling 'error' event on that element, which a normal (bubble
+      // phase) window listener never sees. Capture phase does see it.
       (function () {
         var errors = [];
-        window.addEventListener('error', function (e) {
-          errors.push((e.message || 'Unknown error') + (e.filename ? ' @ ' + e.filename + ':' + e.lineno : ''));
-        });
+        window.addEventListener(
+          'error',
+          function (e) {
+            if (e.target && e.target !== window && e.target.tagName) {
+              var el = e.target;
+              errors.push('Resource failed to load: <' + el.tagName.toLowerCase() + '> ' + (el.src || el.href || ''));
+            } else {
+              errors.push((e.message || 'Unknown error') + (e.filename ? ' @ ' + e.filename + ':' + e.lineno : ''));
+            }
+          },
+          true
+        );
         window.addEventListener('unhandledrejection', function (e) {
           var reason = e.reason && e.reason.message ? e.reason.message : e.reason;
           errors.push('Unhandled promise rejection: ' + reason);
         });
+
+        function showFallback(extra) {
+          var root = document.getElementById('root');
+          if (root && root.firstChild) return;
+          var box = document.createElement('div');
+          box.style.cssText =
+            'font-family:sans-serif;direction:rtl;padding:24px;max-width:600px;' +
+            'margin:40px auto;background:#fff3f3;border:2px solid #dc2626;' +
+            'border-radius:12px;color:#111;line-height:1.6;';
+          var lines = errors.slice();
+          if (extra) lines.push(extra);
+          box.innerHTML =
+            '<h2 style="margin:0 0 12px;color:#dc2626;">האתר לא נטען כראוי</h2>' +
+            '<p>צילום מסך של ההודעה הזו יעזור לאתר את הבעיה:</p>' +
+            '<pre style="white-space:pre-wrap;background:#fff;padding:12px;border-radius:8px;font-size:12px;direction:ltr;text-align:left;">' +
+            (lines.length ? lines.join('\n').replace(/</g, '&lt;') : 'No errors captured.') +
+            '</pre>' +
+            '<p style="font-size:12px;color:#555;">User agent: ' + navigator.userAgent.replace(/</g, '&lt;') + '</p>';
+          document.body.appendChild(box);
+        }
+
         setTimeout(function () {
           var root = document.getElementById('root');
-          if (!root || !root.firstChild) {
-            var box = document.createElement('div');
-            box.style.cssText =
-              'font-family:sans-serif;direction:rtl;padding:24px;max-width:600px;' +
-              'margin:40px auto;background:#fff3f3;border:2px solid #dc2626;' +
-              'border-radius:12px;color:#111;line-height:1.6;';
-            box.innerHTML =
-              '<h2 style="margin:0 0 12px;color:#dc2626;">האתר לא נטען כראוי</h2>' +
-              '<p>צילום מסך של ההודעה הזו יעזור לאתר את הבעיה:</p>' +
-              '<pre style="white-space:pre-wrap;background:#fff;padding:12px;border-radius:8px;font-size:12px;direction:ltr;text-align:left;">' +
-              (errors.length ? errors.join('\n').replace(/</g, '&lt;') : 'No JS errors captured — the app script itself may not have loaded.') +
-              '</pre>' +
-              '<p style="font-size:12px;color:#555;">User agent: ' + navigator.userAgent.replace(/</g, '&lt;') + '</p>';
-            document.body.appendChild(box);
+          if (root && root.firstChild) return;
+          // Active check: fetch the app's own script tag to see exactly
+          // what came back (status code / content-type), in case a
+          // carrier or network proxy silently rewrote or truncated it
+          // rather than producing a normal browser-visible error.
+          var appScript = document.querySelector('script[type="module"][src]');
+          var src = appScript ? appScript.src : null;
+          if (!src) {
+            showFallback();
+            return;
           }
+          fetch(src, { cache: 'no-store' })
+            .then(function (res) {
+              return res.text().then(function (body) {
+                showFallback(
+                  'Fetch of app script (' + src + '): HTTP ' + res.status +
+                  ', content-type=' + res.headers.get('content-type') +
+                  ', length=' + body.length +
+                  ', starts with: ' + JSON.stringify(body.slice(0, 80))
+                );
+              });
+            })
+            .catch(function (err) {
+              showFallback('Fetch of app script (' + src + ') threw: ' + err);
+            });
         }, 4000);
       })();
     </script>
