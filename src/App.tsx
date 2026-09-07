@@ -133,7 +133,7 @@ export default function App() {
     0
   );
 
-  const TABS: { id: 'pizza' | 'drinks' | 'desserts'; label: string; shortLabel: string; icon: React.ElementType }[] = [
+  const TABS: { id: 'pizza' | 'drinks' | 'desserts'; label: string; shortLabel: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'pizza', label: 'פיצות בהרכבה אישית', shortLabel: 'פיצות', icon: Pizza },
     { id: 'drinks', label: 'שתייה קרה', shortLabel: 'שתייה', icon: GlassWater },
     { id: 'desserts', label: 'קינוחים', shortLabel: 'קינוחים', icon: Cake },

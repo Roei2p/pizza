@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   PIZZA_SIZES,
@@ -15,11 +15,20 @@ import {
   AppliedTopping,
   CustomPizzaItem,
 } from '../types';
-import { Check, Plus, Minus, Info, Sparkles, Trash2, PieChart, RotateCcw } from 'lucide-react';
+import { Check, Plus, Minus, Info, Sparkles, Trash2, PieChart, RotateCcw, Box, LayoutGrid } from 'lucide-react';
+import { TiltCard } from './TiltCard';
+
+const Pizza3DView = lazy(() => import('./Pizza3DView').then((m) => ({ default: m.Pizza3DView })));
 
 interface PizzaBuilderProps {
   onAddToCart: (pizza: CustomPizzaItem) => void;
 }
+
+const SIZE_SCALE_3D: Record<PizzaSizeId, number> = {
+  personal: 0.75,
+  family: 0.95,
+  giant: 1.1,
+};
 
 const TOPPING_CATEGORIES: { id: 'veggies' | 'cheese' | 'specials'; label: string; icon: string }[] = [
   { id: 'veggies', label: 'ירקות ותבלינים', icon: '🥬' },
@@ -45,6 +54,10 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
 
   // Feedback state for added animation
   const [addedAnimation, setAddedAnimation] = useState(false);
+
+  // Visualizer display mode: the flat 2D circle is the actual input for
+  // choosing quarters; the 3D view is a presentational preview (beta).
+  const [viewMode, setViewMode] = useState<'flat' | '3d'>('flat');
 
   // Handle setting portion preset
   const handleSetPortionMode = (mode: PortionMode) => {
@@ -217,7 +230,7 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
       {/* Header Banner - cinematic photo backdrop matching the welcome hero */}
       <div
         className="relative overflow-hidden rounded-2xl mb-8 shadow-lg bg-slate-900 bg-cover bg-center"
-        style={{ backgroundImage: `url('${import.meta.env.BASE_URL}assets/hero-pizza-poster.jpg')` }}
+        style={{ backgroundImage: `url('${import.meta.env.BASE_URL}assets/hero-pizza-poster-v2.jpg')` }}
       >
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/75 to-slate-950/40" />
         <div className="relative p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -316,35 +329,36 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
               {availableSizes.map((size) => {
                 const isSelected = selectedSize === size.id;
                 return (
-                  <button
-                    key={size.id}
-                    id={`btn-size-${size.id}`}
-                    type="button"
-                    onClick={() => setSelectedSize(size.id)}
-                    className={`relative p-4 rounded-xl text-right transition-all flex flex-col justify-between cursor-pointer ${
-                      isSelected
-                        ? 'border-2 border-red-600 bg-red-50 text-red-700 font-bold shadow-sm'
-                        : 'border border-slate-200 hover:border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    {size.popular && (
-                      <span className="absolute -top-2.5 left-3 bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs">
-                        הכי נמכר 🔥
-                      </span>
-                    )}
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-slate-800 text-sm">{size.name}</span>
-                        {isSelected && <Check className="w-4 h-4 text-red-600" />}
+                  <TiltCard key={size.id} className="rounded-xl">
+                    <button
+                      id={`btn-size-${size.id}`}
+                      type="button"
+                      onClick={() => setSelectedSize(size.id)}
+                      className={`relative w-full h-full p-4 rounded-xl text-right transition-colors flex flex-col justify-between cursor-pointer ${
+                        isSelected
+                          ? 'border-2 border-red-600 bg-red-50 text-red-700 font-bold shadow-sm'
+                          : 'border border-slate-200 hover:border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {size.popular && (
+                        <span className="absolute -top-2.5 left-3 bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs">
+                          הכי נמכר 🔥
+                        </span>
+                      )}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-bold text-slate-800 text-sm">{size.name}</span>
+                          {isSelected && <Check className="w-4 h-4 text-red-600" />}
+                        </div>
+                        <p className="text-xs text-slate-500 mb-2 font-normal">
+                          {size.slices} משולשים • קוטר {size.diameter}
+                        </p>
                       </div>
-                      <p className="text-xs text-slate-500 mb-2 font-normal">
-                        {size.slices} משולשים • קוטר {size.diameter}
-                      </p>
-                    </div>
-                    <div className="font-black text-red-700 text-base">
-                      ₪{size.basePrice}
-                    </div>
-                  </button>
+                      <div className="font-black text-red-700 text-base">
+                        ₪{size.basePrice}
+                      </div>
+                    </button>
+                  </TiltCard>
                 );
               })}
             </div>
@@ -691,21 +705,60 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
         <div className="lg:col-span-5 sticky top-24 space-y-6">
           {/* Visual Interactive Pizza Board - Professional Polish Style */}
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm text-slate-800">
-            <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-3">
+            <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-3 gap-2 flex-wrap">
               <div>
                 <h4 className="font-black text-base text-slate-800 flex items-center gap-1.5">
                   <span>הדמיית הפיצה שלך</span>
                 </h4>
                 <p className="text-[11px] text-slate-400">
-                  לחצו על רבע ישירות במעגל כדי לבחור או להסיר אותו
+                  {viewMode === 'flat'
+                    ? 'לחצו על רבע ישירות במעגל כדי לבחור או להסיר אותו'
+                    : 'גררו כדי לסובב, גלגלו כדי להתקרב'}
                 </p>
               </div>
-              <span className="text-xs bg-red-50 text-red-700 font-bold px-2.5 py-1 rounded-full border border-red-200">
-                {dietary !== 'regular' && `${dietaryObj.icon} `}{sizeObj.name}
-              </span>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center bg-slate-100 rounded-full p-1 border border-slate-200">
+                  <button
+                    type="button"
+                    id="btn-view-flat"
+                    onClick={() => setViewMode('flat')}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                      viewMode === 'flat' ? 'bg-white text-red-700 shadow-xs' : 'text-slate-500'
+                    }`}
+                  >
+                    <LayoutGrid className="w-3 h-3" />
+                    <span>עריכה</span>
+                  </button>
+                  <button
+                    type="button"
+                    id="btn-view-3d"
+                    onClick={() => setViewMode('3d')}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                      viewMode === '3d' ? 'bg-white text-red-700 shadow-xs' : 'text-slate-500'
+                    }`}
+                  >
+                    <Box className="w-3 h-3" />
+                    <span>3D</span>
+                  </button>
+                </div>
+                <span className="text-xs bg-red-50 text-red-700 font-bold px-2.5 py-1 rounded-full border border-red-200 shrink-0">
+                  {dietary !== 'regular' && `${dietaryObj.icon} `}{sizeObj.name}
+                </span>
+              </div>
             </div>
 
-            {/* Circular Pizza Interactive Diagram as in Design HTML */}
+            {viewMode === '3d' ? (
+              <Suspense
+                fallback={
+                  <div className="w-full h-72 sm:h-80 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 text-xs">
+                    טוען תצוגת 3D...
+                  </div>
+                }
+              >
+                <Pizza3DView appliedToppings={appliedToppings} sizeScale={SIZE_SCALE_3D[selectedSize]} />
+              </Suspense>
+            ) : (
+            /* Circular Pizza Interactive Diagram as in Design HTML */
             <div className="relative w-64 h-64 mx-auto my-6 bg-amber-50 border-4 border-dashed border-amber-200 rounded-full flex items-center justify-center">
               {/* Crossed lines across quarters */}
               <div className="absolute w-full h-[1px] bg-amber-200 rotate-45 pointer-events-none"></div>
@@ -841,6 +894,7 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
                 </button>
               </div>
             </div>
+            )}
 
             {/* Selection Guidance */}
             <div className="mt-3 text-center">

@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { DRINKS_LIST } from '../data/menuData';
 import { DrinkItem, CartDrinkItem } from '../types';
 import { Plus, Minus, Check, ShoppingBag, Sparkles } from 'lucide-react';
+import { TiltCard } from './TiltCard';
 
 interface DrinksSectionProps {
   onAddDrink: (item: CartDrinkItem) => void;
@@ -122,10 +123,10 @@ export const DrinksSection: React.FC<DrinksSectionProps> = ({ onAddDrink }) => {
           const qty = getQuantity(drink.id);
 
           return (
-            <div
+            <TiltCard
               key={drink.id}
               id={`drink-card-${drink.id}`}
-              className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+              className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm hover:shadow-lg transition-shadow flex flex-col justify-between"
             >
               <div>
                 <div className="relative h-40 w-full rounded-xl overflow-hidden mb-3 bg-slate-100">
@@ -202,7 +203,7 @@ export const DrinksSection: React.FC<DrinksSectionProps> = ({ onAddDrink }) => {
                   </motion.button>
                 </div>
               </div>
-            </div>
+            </TiltCard>
           );
         })}
       </div>

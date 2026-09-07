@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { SPECIALTY_ITEMS } from '../data/menuData';
 import { SpecialtyItem, CartSpecialtyItem } from '../types';
 import { Plus, Minus, Check, ShoppingBag } from 'lucide-react';
+import { TiltCard } from './TiltCard';
 
 interface SpecialtyPizzasProps {
   onAddSpecialty: (item: CartSpecialtyItem) => void;
@@ -51,10 +52,10 @@ export const SpecialtyPizzas: React.FC<SpecialtyPizzasProps> = ({ onAddSpecialty
           const qty = getQuantity(item.id);
 
           return (
-            <div
+            <TiltCard
               key={item.id}
               id={`specialty-card-${item.id}`}
-              className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm hover:shadow-md transition-all flex items-center gap-4"
+              className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm hover:shadow-lg transition-shadow flex items-center gap-4"
             >
               <div className="w-16 h-16 shrink-0 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-3xl">
                 {item.icon}
@@ -118,7 +119,7 @@ export const SpecialtyPizzas: React.FC<SpecialtyPizzasProps> = ({ onAddSpecialty
                   </motion.button>
                 </div>
               </div>
-            </div>
+            </TiltCard>
           );
         })}
       </div>
