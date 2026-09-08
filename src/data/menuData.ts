@@ -5,7 +5,6 @@ export const PIZZERIA_CONTACT = {
   tagline: 'פיצה איטלקית אותנטית בעבודת יד מחומרי גלם מובחרים',
   phoneDisplay: '03-555-7427',
   phoneDial: '035557427',
-  whatsappNumber: '972505557427',
   address: 'שלום שבזי 37, אליכין',
   kosher: 'כשר מהדרין',
   openingHours: 'א׳-ה׳: 11:00-23:30 | מוצ״ש: חצי שעה לאחר צאת השבת עד 00:30',

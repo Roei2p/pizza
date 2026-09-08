@@ -43,6 +43,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit' | 'bit'>(savedProfile?.paymentMethod ?? 'cash');
   const [bitCopied, setBitCopied] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
   const [orderCompleted, setOrderCompleted] = useState(false);
   const [liveOrderId, setLiveOrderId] = useState<string | undefined>(undefined);
   const [submitError, setSubmitError] = useState(false);
@@ -146,6 +147,18 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       saveCustomerProfile(profile);
       saveCustomerToCloud(profile).catch(() => {});
       setLiveOrderId(id);
+
+      // Cosmetic-only "processing payment" beat for credit/Bit, so the flow
+      // feels complete — cash has nothing to "process" now, it's paid on
+      // arrival, so it skips straight to the tracker. No real charge ever
+      // happens here.
+      if (paymentMethod !== 'cash') {
+        setSubmitting(false);
+        setProcessingPayment(true);
+        await new Promise((resolve) => setTimeout(resolve, 1800));
+        setProcessingPayment(false);
+      }
+
       setOrderCompleted(true);
       confetti({
         particleCount: 100,
@@ -210,8 +223,26 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           </div>
         </div>
 
-        {/* Order Tracker after submission */}
-        {orderCompleted ? (
+        {/* Fake "processing payment" beat before the tracker (credit/Bit only) */}
+        {processingPayment ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white gap-4">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+              className="w-16 h-16 rounded-full border-4 border-red-100 border-t-red-600 flex items-center justify-center"
+            >
+              {paymentMethod === 'bit' ? (
+                <Smartphone className="w-6 h-6 text-red-600" />
+              ) : (
+                <CreditCard className="w-6 h-6 text-red-600" />
+              )}
+            </motion.div>
+            <div>
+              <h4 className="text-lg font-bold text-slate-800">מעבד תשלום...</h4>
+              <p className="text-xs text-slate-500 mt-1">₪{grandTotal} · {paymentMethod === 'bit' ? 'ביט' : 'אשראי'}</p>
+            </div>
+          </div>
+        ) : orderCompleted ? (
           <OrderTracker
             deliveryType={deliveryType}
             orderId={liveOrderId}
@@ -721,7 +752,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         )}
 
         {/* Bottom Total & Order Buttons */}
-        {!orderCompleted && cartItems.length > 0 && (
+        {!processingPayment && !orderCompleted && cartItems.length > 0 && (
           <div className="bg-white p-4 sm:p-5 border-t border-slate-200 space-y-3 shadow-xs">
             <div className="space-y-1.5 text-xs text-slate-600">
               <div className="flex justify-between">
