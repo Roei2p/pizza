@@ -1,169 +1,84 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { PhoneCall, MessageCircle, CalendarDays, HelpCircle, X, ExternalLink, ShieldCheck, Sparkles } from 'lucide-react';
+import { PhoneCall, HelpCircle, X, Sparkles } from '../icons/coreui';
 import { PIZZERIA_CONTACT } from '../data/menuData';
+import { MenuChatbot } from './MenuChatbot';
 
 export const StickyContactBars: React.FC = () => {
-  const [showLargeOrderModal, setShowLargeOrderModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
-
-  const whatsappMessage = encodeURIComponent(
-    'שלום שרון! הגעתי מהאתר שלך, ואני מעוניין לתאם הזמנה גדולה של פיצות לאירוע / מסיבה לכמה ימים קדימה.'
-  );
-  const whatsappUrl = `https://wa.me/${PIZZERIA_CONTACT.whatsappNumber}?text=${whatsappMessage}`;
+  const [showChatbot, setShowChatbot] = useState(false);
 
   return (
     <>
       {/* ============================================================
-          ITEM 5: BOTTOM RIGHT (בלמטה צד ימין להזמנות גדולות ישירות לוואטסאפ של שרון)
+          COMPACT FLOATING ACTION BUTTONS (bottom-left, stacked)
+          Kept small on purpose so they never cover page content like
+          the "add to cart" button or the toppings grid.
           ============================================================ */}
       <div
-        id="widget-large-orders-bottom-right"
-        className="fixed bottom-4 right-4 z-40 max-w-[300px] sm:max-w-xs"
+        id="floating-contact-actions"
+        className="fixed bottom-4 left-4 z-40 flex flex-col items-start gap-2.5"
         dir="rtl"
       >
-        <motion.div
-          initial={{ y: 30, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white text-slate-800 rounded-2xl shadow-lg border border-slate-200 p-3.5 transition-all hover:shadow-xl"
+        <motion.button
+          id="btn-open-help-modal"
+          type="button"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.5, type: 'spring', stiffness: 260, damping: 18 }}
+          whileHover={{ scale: 1.06 }}
+          whileTap={{ scale: 0.94 }}
+          onClick={() => setShowHelpModal(true)}
+          title="עזרה ותמיכה"
+          aria-label="פתיחת מידע על עזרה ותמיכה"
+          className="group relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white hover:bg-blue-50 text-blue-600 border border-blue-200 shadow-lg flex items-center justify-center cursor-pointer ring-4 ring-white"
         >
-          <div className="flex items-center justify-between gap-2 mb-1.5">
-            <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">
-              אירועים וקבוצות
-            </span>
-            <button
-              id="btn-large-orders-info"
-              type="button"
-              onClick={() => setShowLargeOrderModal(true)}
-              title="מידע על הזמנות מראש"
-              className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+          <span className="pointer-events-none absolute right-full mr-3 top-1/2 -translate-y-1/2 whitespace-nowrap bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hidden sm:block">
+            עזרה ותמיכה
+          </span>
+        </motion.button>
 
-          <p className="text-xs font-bold text-slate-700 leading-snug mb-2.5">
-            להזמנות גדולות (לכמה ימים קדימה)
-          </p>
-
-          <a
-            id="btn-whatsapp-sharon-bottom-right"
-            href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2.5 rounded-full font-bold text-xs flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
-          >
-            <span>להזמנות גדולות (מראש)</span>
-            <span className="text-sm">💬</span>
-          </a>
-        </motion.div>
+        <motion.button
+          id="btn-open-chatbot"
+          type="button"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.6, type: 'spring', stiffness: 260, damping: 18 }}
+          whileHover={{ scale: 1.06 }}
+          whileTap={{ scale: 0.94 }}
+          onClick={() => setShowChatbot((v) => !v)}
+          title="שאלו את העוזר של שרון"
+          aria-label="פתיחת צ'אטבוט לשאלות על התפריט"
+          className="group relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-slate-900 hover:bg-slate-800 text-white shadow-lg flex items-center justify-center cursor-pointer ring-4 ring-white"
+        >
+          <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
+          <span className="pointer-events-none absolute right-full mr-3 top-1/2 -translate-y-1/2 whitespace-nowrap bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hidden sm:block">
+            שאלו את העוזר
+          </span>
+        </motion.button>
       </div>
 
-      {/* ============================================================
-          ITEM 6: BOTTOM LEFT (בלמטה צד שמאל לפנייה לעזרה תתקשרו למספר הפיצה)
-          ============================================================ */}
-      <div
-        id="widget-help-call-bottom-left"
-        className="fixed bottom-4 left-4 z-40 max-w-[300px] sm:max-w-xs"
-        dir="rtl"
-      >
-        <motion.div
-          initial={{ y: 30, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.35 }}
-          className="bg-white text-slate-800 rounded-2xl shadow-lg border border-slate-200 p-3.5 transition-all hover:shadow-xl"
-        >
-          <div className="flex items-center justify-between gap-2 mb-1.5">
-            <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">
-              עזרה ותמיכה
-            </span>
-            <button
-              id="btn-open-help-modal"
-              type="button"
-              onClick={() => setShowHelpModal(true)}
-              className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
-              title="שעות פעילות ומידע"
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <p className="text-xs font-bold text-slate-700 leading-snug mb-2.5">
-            צריכים עזרה בהזמנה? תתקשרו אלינו
-          </p>
-
-          <a
-            id="btn-call-pizzeria-bottom-left"
-            href={`tel:${PIZZERIA_CONTACT.phoneDial}`}
-            className="w-full bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200/80 px-4 py-2.5 rounded-full font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
-          >
-            <span className="w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center text-[10px]">
-              📞
-            </span>
-            <span>לפניה לעזרה: {PIZZERIA_CONTACT.phoneDisplay}</span>
-          </a>
-        </motion.div>
-      </div>
-
-      {/* MODAL: Large Orders Details (ווטסאפ שרון להזמנות מראש) */}
       <AnimatePresence>
-        {showLargeOrderModal && (
-          <div
-            id="modal-large-orders"
-            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
-            dir="rtl"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full text-slate-800 shadow-2xl relative"
-            >
-              <button
-                type="button"
-                onClick={() => setShowLargeOrderModal(false)}
-                className="absolute top-4 left-4 text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-green-50 text-green-600 rounded-full flex items-center justify-center border border-green-200">
-                  <MessageCircle className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black text-slate-800">הזמנות גדולות ואירועים</h3>
-                  <p className="text-xs text-slate-500">תיאום מראש מול שרון לכמה ימים קדימה</p>
-                </div>
-              </div>
-
-              <div className="space-y-3 text-sm text-slate-600 mb-6 leading-relaxed">
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-                  <p className="font-bold text-slate-800 mb-1">🎉 חוגגים יום הולדת, הרמת כוסית או אירוע חברה?</p>
-                  <p className="text-xs text-slate-600">
-                    הזמנות גדולות (10 מגשים ומעלה) מתואמות לכמה ימים מראש כדי שנוכל להכין עבורכם בצק מותפח טרי, לאפות בדיוק בזמן ולתת לכם מחיר חבילה מיוחד כולל שתייה וקינוחים!
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-green-700 font-bold">
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>מענה מהיר ואישי ישירות משרון בוואטסאפ</span>
-                </div>
-              </div>
-
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full py-3 px-4 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-md text-sm transition-all"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span>מעבר מהיר לווטסאפ של שרון 💬</span>
-              </a>
-            </motion.div>
-          </div>
-        )}
+        <MenuChatbot isOpen={showChatbot} onClose={() => setShowChatbot(false)} />
       </AnimatePresence>
+
+      {/* Quick direct call button, bottom-right, single small pill */}
+      <motion.a
+        id="btn-call-pizzeria-quick"
+        href={`tel:${PIZZERIA_CONTACT.phoneDial}`}
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.45, type: 'spring', stiffness: 260, damping: 18 }}
+        whileHover={{ scale: 1.06 }}
+        whileTap={{ scale: 0.94 }}
+        dir="rtl"
+        title={`חייגו אלינו: ${PIZZERIA_CONTACT.phoneDisplay}`}
+        aria-label={`חיוג ישיר לפיצריה, ${PIZZERIA_CONTACT.phoneDisplay}`}
+        className="fixed bottom-4 right-4 z-40 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-900/20 flex items-center justify-center cursor-pointer ring-4 ring-white"
+      >
+        <PhoneCall className="w-5 h-5 sm:w-6 sm:h-6" />
+      </motion.a>
 
       {/* MODAL: Customer Support / Help */}
       <AnimatePresence>
@@ -182,7 +97,8 @@ export const StickyContactBars: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowHelpModal(false)}
-                className="absolute top-4 left-4 text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+                aria-label="סגירת חלון"
+                className="absolute top-4 left-4 text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -206,12 +122,18 @@ export const StickyContactBars: React.FC = () => {
                     <strong className="text-slate-900">שעות פתיחה:</strong> {PIZZERIA_CONTACT.openingHours}
                   </p>
                   <p className="text-slate-700">
+                    <strong className="text-slate-900">זמן משלוח משוער:</strong> {PIZZERIA_CONTACT.deliveryTime}
+                  </p>
+                  <p className="text-slate-700">
                     <strong className="text-slate-900">כתובת:</strong> {PIZZERIA_CONTACT.address}
                   </p>
                   <p className="text-red-700 font-bold">
                     ⭐ {PIZZERIA_CONTACT.kosher}
                   </p>
                 </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  ⚠️ {PIZZERIA_CONTACT.allergenNote}
+                </p>
               </div>
 
               <a

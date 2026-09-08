@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { Header } from './components/Header';
 import { PizzaBuilder } from './components/PizzaBuilder';
 import { DrinksSection } from './components/DrinksSection';
 import { DessertsSection } from './components/DessertsSection';
+import { SpecialtyPizzas } from './components/SpecialtyPizzas';
 import { CartDrawer } from './components/CartDrawer';
 import { StickyContactBars } from './components/StickyContactBars';
-import { CartItem, CustomPizzaItem, CartDrinkItem, CartDessertItem } from './types';
+import { CartItem, CustomPizzaItem, CartDrinkItem, CartDessertItem, CartSpecialtyItem } from './types';
 import { PIZZERIA_CONTACT } from './data/menuData';
-import { Pizza, GlassWater, Cake, Phone, Clock, MapPin, Sparkles, Award } from 'lucide-react';
+import { Pizza, GlassWater, Cake } from './icons/coreui';
 
 export default function App() {
   // Requirement 1: Welcome screen ("הגעתם לאתר של שרון לחץ כאן להמשיך")
@@ -72,6 +74,28 @@ export default function App() {
     });
   };
 
+  // Add Specialty (fixed-price) item to Cart
+  const handleAddSpecialty = (specialty: CartSpecialtyItem) => {
+    setCartItems((prev) => {
+      const existingIdx = prev.findIndex(
+        (item) => item.type === 'specialty' && item.data.specialtyId === specialty.specialtyId
+      );
+      if (existingIdx !== -1) {
+        const copy = [...prev];
+        const existing = copy[existingIdx] as { type: 'specialty'; data: CartSpecialtyItem };
+        copy[existingIdx] = {
+          type: 'specialty',
+          data: {
+            ...existing.data,
+            quantity: existing.data.quantity + specialty.quantity,
+          },
+        };
+        return copy;
+      }
+      return [...prev, { type: 'specialty', data: specialty }];
+    });
+  };
+
   // Cart item management
   const handleUpdateQuantity = (index: number, newQty: number) => {
     if (newQty <= 0) {
@@ -102,6 +126,17 @@ export default function App() {
     setCartItems([]);
   };
 
+  // Restores a past order's items into the (empty) cart, for the "order
+  // your usual again" quick-reorder shortcut. Ids are regenerated so they
+  // never collide with a previous restore or newly-added items.
+  const handleRestoreOrder = (items: CartItem[]) => {
+    const refreshed = items.map((item, i) => ({
+      ...item,
+      data: { ...item.data, id: `restored-${Date.now()}-${i}` },
+    })) as CartItem[];
+    setCartItems((prev) => [...prev, ...refreshed]);
+  };
+
   // Calculate cart badge counts and price
   const cartTotalCount = cartItems.reduce((acc, item) => acc + item.data.quantity, 0);
   const cartTotalPrice = cartItems.reduce(
@@ -109,8 +144,17 @@ export default function App() {
     0
   );
 
+  const TABS: { id: 'pizza' | 'drinks' | 'desserts'; label: string; shortLabel: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { id: 'pizza', label: 'פיצות בהרכבה אישית', shortLabel: 'פיצות', icon: Pizza },
+    { id: 'drinks', label: 'שתייה קרה', shortLabel: 'שתייה', icon: GlassWater },
+    { id: 'desserts', label: 'קינוחים', shortLabel: 'קינוחים', icon: Cake },
+  ];
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-['Rubik',sans-serif] selection:bg-red-600 selection:text-white" dir="rtl">
+    <div
+      className="min-h-screen bg-[radial-gradient(circle_at_top,_#fff7ed_0%,_#f8fafc_45%)] text-slate-800 flex flex-col font-['Rubik',sans-serif] selection:bg-red-600 selection:text-white"
+      dir="rtl"
+    >
       {/* 1. WELCOME SCREEN OVERLAY (Requirement 1) */}
       {showWelcome && (
         <WelcomeScreen onContinue={() => setShowWelcome(false)} />
@@ -118,70 +162,73 @@ export default function App() {
 
       {/* TOP HEADER */}
       <Header
-        activeTab={activeTab}
-        onTabChange={(tab) => setActiveTab(tab)}
         cartCount={cartTotalCount}
         cartTotal={cartTotalPrice}
         onOpenCart={() => setIsCartOpen(true)}
         onOpenWelcome={() => setShowWelcome(true)}
       />
 
+      {/* SINGLE CATEGORY NAVIGATION — sticky under the header, one source of truth */}
+      <nav
+        id="category-nav"
+        aria-label="ניווט בין קטגוריות התפריט"
+        className="sticky top-[60px] sm:top-[68px] z-20 bg-slate-50/90 backdrop-blur-md border-b border-slate-200"
+      >
+        <div className="max-w-7xl mx-auto px-3 sm:px-6">
+          <div className="flex items-center justify-center gap-1.5 sm:gap-3 py-2.5 sm:py-3 overflow-x-auto">
+            {TABS.map((tab) => {
+              const isActive = activeTab === tab.id;
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  id={`tab-btn-${tab.id}`}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`relative shrink-0 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 ${
+                    isActive
+                      ? 'bg-red-600 text-white shadow-md shadow-red-200'
+                      : 'bg-white text-slate-700 hover:bg-red-50 hover:text-red-700 border border-slate-200'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="sm:hidden">{tab.shortLabel}</span>
+                  <span className="hidden sm:inline">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </nav>
+
       {/* MAIN CONTAINER */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 pb-36">
-        {/* Category Navigation Pills */}
-        <div className="flex items-center justify-center gap-2 sm:gap-3 mb-8">
-          <button
-            type="button"
-            onClick={() => setActiveTab('pizza')}
-            className={`px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer ${
-              activeTab === 'pizza'
-                ? 'bg-red-600 text-white shadow-xs'
-                : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            <Pizza className="w-4 h-4" />
-            <span>פיצות בהרכבה אישית</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('drinks')}
-            className={`px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer ${
-              activeTab === 'drinks'
-                ? 'bg-red-600 text-white shadow-xs'
-                : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            <GlassWater className="w-4 h-4" />
-            <span>אופציית השתייה</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('desserts')}
-            className={`px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer ${
-              activeTab === 'desserts'
-                ? 'bg-red-600 text-white shadow-xs'
-                : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            <Cake className="w-4 h-4" />
-            <span>אופציית קינוחים</span>
-          </button>
-        </div>
-
         {/* ACTIVE CONTENT VIEW */}
-        {activeTab === 'pizza' && (
-          <PizzaBuilder onAddToCart={handleAddPizza} />
-        )}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+          >
+            {activeTab === 'pizza' && (
+              <>
+                <SpecialtyPizzas onAddSpecialty={handleAddSpecialty} />
+                <PizzaBuilder onAddToCart={handleAddPizza} />
+              </>
+            )}
 
-        {activeTab === 'drinks' && (
-          <DrinksSection onAddDrink={handleAddDrink} />
-        )}
+            {activeTab === 'drinks' && (
+              <DrinksSection onAddDrink={handleAddDrink} />
+            )}
 
-        {activeTab === 'desserts' && (
-          <DessertsSection onAddDessert={handleAddDessert} />
-        )}
+            {activeTab === 'desserts' && (
+              <DessertsSection onAddDessert={handleAddDessert} />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* FOOTER INFO */}
@@ -199,15 +246,16 @@ export default function App() {
             <span>•</span>
             <span>{PIZZERIA_CONTACT.kosher}</span>
             <span>•</span>
+            <span>זמן משלוח משוער: {PIZZERIA_CONTACT.deliveryTime}</span>
+            <span>•</span>
             <span>טלפון: {PIZZERIA_CONTACT.phoneDisplay}</span>
           </div>
         </div>
       </footer>
 
-      {/* 5 & 6. STICKY ACTIONS:
-          - Bottom Right: Large Orders to Sharon's WhatsApp (אירועים לכמה ימים קדימה)
-          - Bottom Left: Help & Call Pizzeria Phone Number
-      */}
+      {/* FLOATING CONTACT ACTIONS: compact round buttons for WhatsApp large-orders,
+          help/support info, and a direct call — small footprint so they never
+          cover page content (add-to-cart button, toppings grid, etc). */}
       <StickyContactBars />
 
       {/* CART DRAWER */}
@@ -218,6 +266,7 @@ export default function App() {
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveItem}
         onClearCart={handleClearCart}
+        onRestoreOrder={handleRestoreOrder}
       />
     </div>
   );

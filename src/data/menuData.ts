@@ -1,32 +1,35 @@
-import { PizzaSize, PizzaCrust, Topping, DrinkItem, DessertItem } from '../types';
+import { PizzaSize, PizzaCrust, Topping, DrinkItem, DessertItem, SpecialtyItem, DietaryOption } from '../types';
 
 export const PIZZERIA_CONTACT = {
   name: 'הפיצה של שרון',
   tagline: 'פיצה איטלקית אותנטית בעבודת יד מחומרי גלם מובחרים',
   phoneDisplay: '03-555-7427',
   phoneDial: '035557427',
-  whatsappNumber: '972505557427',
-  address: 'רחוב הבנים 18, קניון מרכז המושבה',
-  kosher: 'כשר למהדרין - בד״צ בית יוסף',
+  address: 'שלום שבזי 37, אליכין',
+  kosher: 'כשר מהדרין',
   openingHours: 'א׳-ה׳: 11:00-23:30 | מוצ״ש: חצי שעה לאחר צאת השבת עד 00:30',
-  deliveryFee: 15,
-  minOrder: 50,
+  deliveryFee: 18,
+  minOrder: 80,
+  deliveryTime: '40-60 דקות',
+  allergenNote:
+    'המוצרים עלולים להכיל או מכילים אלרגנים, וגלוטן עשוי להימצא גם במוצרים המוגדרים ללא גלוטן. כל המנות (כולל הטבעוניות) מיוצרות במטבח שאינו סטרילי.',
 };
 
+// Sizes and prices match Sharon's real delivery-app menu (אישית/משפחתית/ענקית).
 export const PIZZA_SIZES: PizzaSize[] = [
   {
     id: 'personal',
     name: 'פיצה אישית (M)',
     slices: 6,
     diameter: '28 ס״מ',
-    basePrice: 42,
+    basePrice: 35,
   },
   {
     id: 'family',
     name: 'פיצה משפחתית (L)',
     slices: 8,
     diameter: '36 ס״מ',
-    basePrice: 62,
+    basePrice: 45,
     popular: true,
   },
   {
@@ -34,7 +37,33 @@ export const PIZZA_SIZES: PizzaSize[] = [
     name: 'פיצה ענקית (XL)',
     slices: 8,
     diameter: '42 ס״מ',
-    basePrice: 79,
+    basePrice: 55,
+  },
+];
+
+// Dietary variants from the real menu: vegan adds a flat 3₪ across every size
+// (35→38, 45→48, 55→58); gluten-free is offered in the personal size only.
+export const DIETARY_OPTIONS: DietaryOption[] = [
+  {
+    id: 'regular',
+    name: 'רגיל',
+    icon: '🍕',
+    extraPrice: 0,
+    sizesAllowed: ['personal', 'family', 'giant'],
+  },
+  {
+    id: 'vegan',
+    name: 'טבעוני',
+    icon: '🌱',
+    extraPrice: 3,
+    sizesAllowed: ['personal', 'family', 'giant'],
+  },
+  {
+    id: 'gluten_free',
+    name: 'ללא גלוטן',
+    icon: '🌾',
+    extraPrice: 0,
+    sizesAllowed: ['personal'],
   },
 ];
 
@@ -59,110 +88,157 @@ export const PIZZA_CRUSTS: PizzaCrust[] = [
   },
 ];
 
+// Fixed-price snacks and side dishes from Sharon's real menu ("נשנושים ומנות
+// צד") — served as-is, not through the size/crust/topping pizza builder.
+export const SPECIALTY_ITEMS: SpecialtyItem[] = [
+  {
+    id: 'malawach_pizza',
+    name: 'מלאווח פיצה',
+    description: 'מלאווח חם עם רוטב פיצה וגבינה. ניתן להוסיף תוספות בתשלום.',
+    price: 28,
+    icon: '🫓',
+    image: `${import.meta.env.BASE_URL}assets/malawach-pizza.jpg`,
+  },
+  {
+    id: 'mozzarella_sticks',
+    name: 'אצבעות מוצרלה',
+    description: 'אצבעות פריכות במילוי גבינת מוצרלה נמסה',
+    price: 25,
+    icon: '🧀',
+    image: `${import.meta.env.BASE_URL}assets/mozzarella-sticks.jpg`,
+  },
+  {
+    id: 'gouda_rings',
+    name: 'טבעות גאודה',
+    description: 'טבעות פריכות במילוי גבינת גאודה',
+    price: 25,
+    icon: '🥯',
+    image: `${import.meta.env.BASE_URL}assets/gouda-rings.jpg`,
+  },
+];
+
+// Sharon's real delivery menu prices every added topping flat, per tray
+// ("תוספת למגש - 8 ש."), regardless of type — kept uniform here to match.
+const TOPPING_PRICE_WHOLE = 8;
+const TOPPING_PRICE_PER_QUARTER = 2;
+
 export const TOPPINGS_LIST: Topping[] = [
   {
     id: 'olives_green',
     name: 'זיתים ירוקים',
     icon: '🫒',
-    pricePerQuarter: 2,
-    priceWhole: 7,
+    pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
+    priceWhole: TOPPING_PRICE_WHOLE,
     category: 'veggies',
+    vegan: true,
   },
   {
     id: 'mushrooms',
     name: 'פטריות שמפיניון טריות',
     icon: '🍄',
-    pricePerQuarter: 2.5,
-    priceWhole: 8,
+    pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
+    priceWhole: TOPPING_PRICE_WHOLE,
     category: 'veggies',
+    vegan: true,
   },
   {
     id: 'corn',
     name: 'תירס מתוק',
     icon: '🌽',
-    pricePerQuarter: 2,
-    priceWhole: 7,
+    pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
+    priceWhole: TOPPING_PRICE_WHOLE,
     category: 'veggies',
+    vegan: true,
   },
   {
     id: 'onion_red',
     name: 'בצל סגול קצוץ',
     icon: '🧅',
-    pricePerQuarter: 2,
-    priceWhole: 7,
+    pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
+    priceWhole: TOPPING_PRICE_WHOLE,
     category: 'veggies',
+    vegan: true,
   },
   {
     id: 'tomatoes',
     name: 'עגבניות טריות ועשבי תיבול',
     icon: '🍅',
-    pricePerQuarter: 2,
-    priceWhole: 7,
+    pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
+    priceWhole: TOPPING_PRICE_WHOLE,
     category: 'veggies',
+    vegan: true,
   },
   {
     id: 'jalapeno',
     name: 'פלפל חריף ירוק',
     icon: '🌶️',
-    pricePerQuarter: 2,
-    priceWhole: 7,
+    pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
+    priceWhole: TOPPING_PRICE_WHOLE,
     category: 'veggies',
+    vegan: true,
   },
   {
     id: 'olives_kalamata',
     name: 'זיתי קלמטה מובחרים',
     icon: '🖤',
-    pricePerQuarter: 2.5,
-    priceWhole: 8,
+    pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
+    priceWhole: TOPPING_PRICE_WHOLE,
     category: 'veggies',
+    vegan: true,
   },
   {
     id: 'extra_cheese',
     name: 'תוספת אקסטרה מוצרלה',
     icon: '🧀',
-    pricePerQuarter: 3,
-    priceWhole: 10,
+    pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
+    priceWhole: TOPPING_PRICE_WHOLE,
     category: 'cheese',
+    vegan: false,
   },
   {
     id: 'feta',
     name: 'גבינה בולגרית מלוחה 24%',
     icon: '⚪',
-    pricePerQuarter: 2.5,
-    priceWhole: 9,
+    pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
+    priceWhole: TOPPING_PRICE_WHOLE,
     category: 'cheese',
+    vegan: false,
   },
   {
     id: 'tuna',
     name: 'טונה מובחרת',
     icon: '🐟',
-    pricePerQuarter: 3,
-    priceWhole: 10,
+    pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
+    priceWhole: TOPPING_PRICE_WHOLE,
     category: 'specials',
+    vegan: false,
   },
   {
     id: 'pineapple',
     name: 'אננס עסיסי',
     icon: '🍍',
-    pricePerQuarter: 2.5,
-    priceWhole: 8,
+    pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
+    priceWhole: TOPPING_PRICE_WHOLE,
     category: 'specials',
+    vegan: true,
   },
   {
     id: 'garlic_confit',
     name: 'שום קונפי ושמן זית',
     icon: '🧄',
-    pricePerQuarter: 2.5,
-    priceWhole: 8,
+    pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
+    priceWhole: TOPPING_PRICE_WHOLE,
     category: 'specials',
+    vegan: true,
   },
   {
     id: 'fresh_basil',
     name: 'בזיליקום טרי מהעציץ',
     icon: '🌿',
-    pricePerQuarter: 1.5,
-    priceWhole: 5,
+    pricePerQuarter: TOPPING_PRICE_PER_QUARTER,
+    priceWhole: TOPPING_PRICE_WHOLE,
     category: 'veggies',
+    vegan: true,
   },
 ];
 
@@ -270,43 +346,11 @@ export const DRINKS_LIST: DrinkItem[] = [
 
 export const DESSERTS_LIST: DessertItem[] = [
   {
-    id: 'calzone_nutella',
-    name: 'קלצונה שוקולד נוטלה ומרשמלו',
-    description: 'מאפה איטלקי חם נאפה בתנור אבן, ממולא בנוטלה עשירה, מרשמלו נמס ושברי אגוזים',
-    price: 36,
-    badge: 'מומלץ השף ⭐',
-    image: 'https://images.unsplash.com/photo-1579954115545-a95591f28bfc?w=400&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'malabi_home',
-    name: 'מלבי שמנת אסלי של שרון',
-    description: 'מלבי קרמי ועשיר מבושל משמנת אמיתית, מוגש עם סירופ מי ורדים, קוקוס קלוי ובוטנים',
-    price: 24,
-    badge: 'מתכון ביתי',
-    image: 'https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?w=400&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'chocolate_fudge_cake',
-    name: 'עוגת פאדג׳ שוקולד חמה',
-    description: 'עוגת שוקולד עשירה ונימוחה עם ליבת שוקולד חם נוזל',
-    price: 34,
-    badge: 'שוקולד מושחת',
-    image: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=400&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'churros_dulce',
-    name: 'אצבעות צ׳ורוס פריכות',
-    description: '6 מקלות צ׳ורוס מצופים בסוכר וקינמון, מוגשים לצד צנצנת ריבת חלב ארגנטינאית',
-    price: 32,
-    badge: 'פריך וחם',
-    image: 'https://images.unsplash.com/photo-1624300629298-e9de39c13be5?w=400&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'ben_jerry_pint',
-    name: 'גלידת בן אנד ג׳ריס (פיינט)',
-    description: 'מגוון טעמים אהובים: קרם ברולה / פאדג׳ שוקולד / עוגיות בצק',
-    price: 29,
-    badge: 'צונן ומתוק',
-    image: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400&auto=format&fit=crop&q=80',
+    id: 'malawach_chocolate',
+    name: 'פיצה מלוואח שוקולד',
+    description: 'מלאווח עם שוקולד מעל.',
+    price: 28,
+    badge: 'מתוק וחם',
+    image: `${import.meta.env.BASE_URL}assets/malawach-chocolate.jpg`,
   },
 ];

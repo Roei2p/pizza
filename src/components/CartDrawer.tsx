@@ -1,9 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CartItem, CustomPizzaItem, QuarterId } from '../types';
-import { PIZZERIA_CONTACT, PIZZA_SIZES, PIZZA_CRUSTS, TOPPINGS_LIST } from '../data/menuData';
-import { X, Trash2, Plus, Minus, ShoppingBag, Send, PhoneCall, Check, MapPin, User, MessageCircle } from 'lucide-react';
+import { PIZZERIA_CONTACT, PIZZA_SIZES, PIZZA_CRUSTS, TOPPINGS_LIST, DIETARY_OPTIONS } from '../data/menuData';
+import { X, Trash2, Plus, Minus, ShoppingBag, Send, PhoneCall, Check, MapPin, User, RotateCcw, Sparkles, Banknote, CreditCard, Smartphone, Copy } from '../icons/coreui';
 import confetti from 'canvas-confetti';
+import { OrderTracker } from './OrderTracker';
+import { CustomerProfile, loadCustomerProfile, saveCustomerProfile } from '../utils/customerProfile';
+import { createOrder } from '../lib/orders';
+import { lookupCustomerByPhone, saveCustomerToCloud } from '../lib/customers';
+import { askGemini, geminiEnabled } from '../lib/gemini';
+import { buildMenuContext } from '../lib/menuContext';
+import { summarizeItem } from '../lib/itemSummary';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -12,6 +19,7 @@ interface CartDrawerProps {
   onUpdateQuantity: (index: number, newQty: number) => void;
   onRemoveItem: (index: number) => void;
   onClearCart: () => void;
+  onRestoreOrder: (items: CartItem[]) => void;
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
@@ -21,14 +29,66 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onUpdateQuantity,
   onRemoveItem,
   onClearCart,
+  onRestoreOrder,
 }) => {
-  const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
-  const [customerName, setCustomerName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [city, setCity] = useState('');
-  const [street, setStreet] = useState('');
+  // Recognize a returning visitor on this same browser and prefill their
+  // details (see handlePhoneBlur below for the cross-device version, backed
+  // by Firestore rather than just this browser's localStorage).
+  const [savedProfile] = useState<CustomerProfile | null>(() => loadCustomerProfile());
+  const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>(savedProfile?.deliveryType ?? 'delivery');
+  const [customerName, setCustomerName] = useState(savedProfile?.name ?? '');
+  const [phone, setPhone] = useState(savedProfile?.phone ?? '');
+  const [city, setCity] = useState(savedProfile?.city ?? '');
+  const [street, setStreet] = useState(savedProfile?.street ?? '');
   const [notes, setNotes] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit' | 'bit'>(savedProfile?.paymentMethod ?? 'cash');
+  const [bitCopied, setBitCopied] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
   const [orderCompleted, setOrderCompleted] = useState(false);
+  const [liveOrderId, setLiveOrderId] = useState<string | undefined>(undefined);
+  const [submitError, setSubmitError] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{ name?: boolean; phone?: boolean }>({});
+
+  // Cross-device recognition: if this phone number already has a cloud
+  // profile (from any device), offer to fill in the rest from it — unlike
+  // the localStorage profile, which only knows this one browser.
+  const handlePhoneBlur = async () => {
+    if (!phone.trim() || customerName.trim()) return;
+    const cloudProfile = await lookupCustomerByPhone(phone).catch(() => null);
+    if (!cloudProfile) return;
+    setCustomerName(cloudProfile.name);
+    setCity(cloudProfile.city);
+    setStreet(cloudProfile.street);
+    setDeliveryType(cloudProfile.deliveryType);
+    setPaymentMethod(cloudProfile.paymentMethod ?? 'cash');
+  };
+
+  // One-time AI suggestion for a returning customer with an empty cart,
+  // based on what they ordered last time. Fetched once and cached in state
+  // rather than on every render.
+  const [aiTip, setAiTip] = useState<string | null>(null);
+  useEffect(() => {
+    if (!geminiEnabled || cartItems.length > 0 || !savedProfile || savedProfile.lastOrderItems.length === 0) return;
+    let cancelled = false;
+    const orderSummary = savedProfile.lastOrderItems.map(summarizeItem).join(', ');
+    askGemini(
+      [
+        {
+          role: 'user',
+          text: `ההזמנה הקודמת של הלקוח כללה: ${orderSummary}. כתבו לו המלצה קצרה (משפט אחד, ידידותי, בעברית) למה לנסות הפעם — יכול להיות תוספת שמשלימה את מה שהוא אוהב, או קינוח/שתייה שמתאימים. אל תמציאו פריטים שלא ברשימת התפריט.`,
+        },
+      ],
+      `אתם עוזר המלצות של "${PIZZERIA_CONTACT.name}". ${buildMenuContext()}`,
+    )
+      .then((text) => {
+        if (!cancelled) setAiTip(text);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [savedProfile, cartItems.length]);
 
   // Portion label helper for cart
   const getPortionLabel = (quarters: QuarterId[]) => {
@@ -40,89 +100,78 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   };
 
   // Subtotal calculation
-  const subtotal = cartItems.reduce((acc, item) => {
-    if (item.type === 'pizza') {
-      return acc + item.data.unitPrice * item.data.quantity;
-    }
-    if (item.type === 'drink') {
-      return acc + item.data.unitPrice * item.data.quantity;
-    }
-    if (item.type === 'dessert') {
-      return acc + item.data.unitPrice * item.data.quantity;
-    }
-    return acc;
-  }, 0);
+  const subtotal = cartItems.reduce((acc, item) => acc + item.data.unitPrice * item.data.quantity, 0);
 
   const deliveryFee = deliveryType === 'delivery' && cartItems.length > 0 ? PIZZERIA_CONTACT.deliveryFee : 0;
   const grandTotal = subtotal + deliveryFee;
 
-  // Build WhatsApp text for sending order to Sharon
-  const generateWhatsAppOrderText = () => {
-    let text = `🍕 *הזמנה חדשה מהאתר של שרון!* 🍕\n\n`;
-    text += `👤 *שם לקוח:* ${customerName || 'לא צוין'}\n`;
-    text += `📞 *טלפון:* ${phone || 'לא צוין'}\n`;
-    text += `🛵 *סוג הזמנה:* ${deliveryType === 'delivery' ? 'משלוח לבית' : 'איסוף עצמי'}\n`;
-
-    if (deliveryType === 'delivery') {
-      text += `📍 *כתובת למשלוח:* ${city} ${street}\n`;
-    }
-
-    text += `\n📋 *פירוט ההזמנה:*\n`;
-
-    cartItems.forEach((item, i) => {
-      if (item.type === 'pizza') {
-        const sizeObj = PIZZA_SIZES.find((s) => s.id === item.data.size);
-        const crustObj = PIZZA_CRUSTS.find((c) => c.id === item.data.crust);
-
-        text += `\n🔹 *פיצה #${i + 1}:* ${item.data.quantity}x ${sizeObj?.name || ''} (₪${item.data.unitPrice})\n`;
-        text += `   - בצק: ${crustObj?.name || ''}\n`;
-
-        if (item.data.appliedToppings.length === 0) {
-          text += `   - ללא תוספות (מרגריטה נקייה)\n`;
-        } else {
-          text += `   - תוספות:\n`;
-          item.data.appliedToppings.forEach((at) => {
-            const tData = TOPPINGS_LIST.find((t) => t.id === at.toppingId);
-            text += `     • ${tData?.name || at.toppingId} [${getPortionLabel(at.quarters)}]\n`;
-          });
-        }
-
-        if (item.data.notes) {
-          text += `   - הערות לפיצה: ${item.data.notes}\n`;
-        }
-      } else if (item.type === 'drink') {
-        text += `\n🥤 ${item.data.quantity}x ${item.data.name} (${item.data.sizeVolume}) - ₪${item.data.unitPrice * item.data.quantity}\n`;
-      } else if (item.type === 'dessert') {
-        text += `\n🍰 ${item.data.quantity}x ${item.data.name} - ₪${item.data.unitPrice * item.data.quantity}\n`;
-      }
-    });
-
-    text += `\n💰 *סה"כ לתשלום: ₪${grandTotal}*`;
-    if (deliveryFee > 0) {
-      text += ` (כולל דמי משלוח ₪${deliveryFee})`;
-    }
-
-    if (notes.trim()) {
-      text += `\n\n📝 *הערות כלליות להזמנה:* ${notes.trim()}`;
-    }
-
-    text += `\n\nתודה רבה!`;
-    return encodeURIComponent(text);
-  };
-
-  const handleSendOrderWhatsApp = () => {
-    if (!phone && !customerName) {
-      alert('אנא מלאו שם ומספר טלפון כדי לשלוח את ההזמנה לשרון');
+  const handleSubmitOrder = async () => {
+    const errors = {
+      name: !customerName.trim(),
+      phone: !phone.trim(),
+    };
+    if (errors.name || errors.phone) {
+      setFieldErrors(errors);
+      document.getElementById('input-customer-name')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 },
-    });
-    const url = `https://wa.me/${PIZZERIA_CONTACT.whatsappNumber}?text=${generateWhatsAppOrderText()}`;
-    window.open(url, '_blank');
-    setOrderCompleted(true);
+    setFieldErrors({});
+    setSubmitError(false);
+    setSubmitting(true);
+
+    const profile = {
+      name: customerName.trim(),
+      phone: phone.trim(),
+      deliveryType,
+      city,
+      street,
+      paymentMethod,
+      lastOrderAt: Date.now(),
+      lastOrderItems: cartItems,
+    };
+
+    try {
+      const id = await createOrder({
+        customerName: customerName.trim(),
+        customerPhone: phone.trim(),
+        deliveryType,
+        city,
+        street,
+        paymentMethod,
+        notes,
+        items: cartItems,
+        subtotal,
+        deliveryFee,
+        grandTotal,
+      });
+      saveCustomerProfile(profile);
+      saveCustomerToCloud(profile).catch(() => {});
+      setLiveOrderId(id);
+
+      // Cosmetic-only "processing payment" beat for credit/Bit, so the flow
+      // feels complete — cash has nothing to "process" now, it's paid on
+      // arrival, so it skips straight to the tracker. No real charge ever
+      // happens here.
+      if (paymentMethod !== 'cash') {
+        setSubmitting(false);
+        setProcessingPayment(true);
+        await new Promise((resolve) => setTimeout(resolve, 1800));
+        setProcessingPayment(false);
+      }
+
+      setOrderCompleted(true);
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+      });
+    } catch {
+      // No point saving a profile for an order that never actually reached
+      // the kitchen — surface this honestly instead of pretending success.
+      setSubmitError(true);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -174,37 +223,36 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           </div>
         </div>
 
-        {/* Success Screen after submission */}
-        {orderCompleted ? (
-          <div className="p-8 text-center flex-1 flex flex-col items-center justify-center bg-white">
-            <div className="w-20 h-20 rounded-full bg-green-50 border border-green-200 text-green-600 flex items-center justify-center text-4xl mb-4 shadow-xs">
-              ✓
-            </div>
-            <h4 className="text-2xl font-black text-slate-800 mb-2">ההזמנה בדרך לשרון!</h4>
-            <p className="text-slate-600 text-sm mb-6 max-w-xs leading-relaxed">
-              הפרטים נשלחו בהצלחה לוואטסאפ של שרון. הפיצה תיכנס לאפייה חמה מיד!
-            </p>
-            <div className="space-y-3 w-full max-w-xs">
-              <a
-                href={`tel:${PIZZERIA_CONTACT.phoneDial}`}
-                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl flex items-center justify-center gap-2 text-sm shadow-xs transition-all"
-              >
-                <PhoneCall className="w-4 h-4" />
-                <span>בירור מצב הזמנה: {PIZZERIA_CONTACT.phoneDisplay}</span>
-              </a>
-              <button
-                type="button"
-                onClick={() => {
-                  onClearCart();
-                  setOrderCompleted(false);
-                  onClose();
-                }}
-                className="w-full py-3 bg-slate-100 text-slate-700 font-bold rounded-xl text-sm hover:bg-slate-200 border border-slate-200 transition-all cursor-pointer"
-              >
-                התחל הזמנה חדשה
-              </button>
+        {/* Fake "processing payment" beat before the tracker (credit/Bit only) */}
+        {processingPayment ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white gap-4">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+              className="w-16 h-16 rounded-full border-4 border-red-100 border-t-red-600 flex items-center justify-center"
+            >
+              {paymentMethod === 'bit' ? (
+                <Smartphone className="w-6 h-6 text-red-600" />
+              ) : (
+                <CreditCard className="w-6 h-6 text-red-600" />
+              )}
+            </motion.div>
+            <div>
+              <h4 className="text-lg font-bold text-slate-800">מעבד תשלום...</h4>
+              <p className="text-xs text-slate-500 mt-1">₪{grandTotal} · {paymentMethod === 'bit' ? 'ביט' : 'אשראי'}</p>
             </div>
           </div>
+        ) : orderCompleted ? (
+          <OrderTracker
+            deliveryType={deliveryType}
+            orderId={liveOrderId}
+            onNewOrder={() => {
+              onClearCart();
+              setOrderCompleted(false);
+              setLiveOrderId(undefined);
+              onClose();
+            }}
+          />
         ) : cartItems.length === 0 ? (
           /* Empty Cart State */
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white">
@@ -222,6 +270,31 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             >
               התחל להרכיב פיצה
             </button>
+
+            {savedProfile && savedProfile.lastOrderItems.length > 0 && (
+              <div className="mt-6 w-full max-w-xs bg-amber-50 border border-amber-200 rounded-xl p-4 text-right">
+                <p className="text-xs font-bold text-slate-800 mb-1">
+                  שלום שוב{savedProfile.name ? `, ${savedProfile.name}` : ''}! 👋
+                </p>
+                <p className="text-[11px] text-slate-500 mb-3">
+                  זיהינו אתכם מהזמנה קודמת. אפשר להזמין שוב באותה הרכבה בלחיצה אחת.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onRestoreOrder(savedProfile.lastOrderItems)}
+                  className="w-full py-2.5 bg-white hover:bg-amber-100 text-amber-800 font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 border border-amber-300 transition-all cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>הזמינו שוב את ההזמנה האחרונה שלכם</span>
+                </button>
+                {aiTip && (
+                  <div className="mt-3 pt-3 border-t border-amber-200 flex items-start gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-amber-800 leading-relaxed">{aiTip}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           /* Cart Content & Checkout */
@@ -236,6 +309,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 if (item.type === 'pizza') {
                   const sizeObj = PIZZA_SIZES.find((s) => s.id === item.data.size);
                   const crustObj = PIZZA_CRUSTS.find((c) => c.id === item.data.crust);
+                  const dietaryObj = DIETARY_OPTIONS.find((d) => d.id === item.data.dietary);
 
                   return (
                     <div
@@ -249,6 +323,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                             <span className="font-bold text-slate-800 text-sm">
                               {sizeObj?.name}
                             </span>
+                            {dietaryObj && dietaryObj.id !== 'regular' && (
+                              <span className="text-[10px] bg-green-50 text-green-700 border border-green-200 px-1.5 py-0.5 rounded font-bold">
+                                {dietaryObj.icon} {dietaryObj.name}
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs text-slate-500">
                             {crustObj?.name}
@@ -428,6 +507,54 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       </div>
                     </div>
                   );
+                } else if (item.type === 'specialty') {
+                  return (
+                    <div
+                      key={item.data.id || index}
+                      className="bg-white rounded-xl p-3 border border-slate-200 shadow-xs flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 shrink-0 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-2xl">
+                          {item.data.icon}
+                        </div>
+                        <div>
+                          <h5 className="font-bold text-xs text-slate-800">{item.data.name}</h5>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200">
+                          <button
+                            type="button"
+                            onClick={() => onUpdateQuantity(index, item.data.quantity - 1)}
+                            className="w-6 h-6 bg-white rounded-md flex items-center justify-center text-slate-700 text-xs cursor-pointer"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="font-bold text-xs px-2 text-slate-800">
+                            {item.data.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => onUpdateQuantity(index, item.data.quantity + 1)}
+                            className="w-6 h-6 bg-white rounded-md flex items-center justify-center text-slate-700 text-xs cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <span className="font-black text-slate-800 text-xs min-w-[36px] text-left">
+                          ₪{item.data.unitPrice * item.data.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => onRemoveItem(index)}
+                          className="text-slate-400 hover:text-red-600 p-1 cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
                 }
                 return null;
               })}
@@ -464,26 +591,136 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               </div>
             </div>
 
-            {/* Customer Contact Details */}
+            {/* Payment Method (informational only — no real payment processing) */}
             <div className="bg-white rounded-xl p-4 border border-slate-200 space-y-3">
               <label className="block text-xs font-bold text-slate-800">
-                פרטי הלקוח למשלוח ואישור:
+                איך תרצו לשלם?
               </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('cash')}
+                  className={`py-2.5 px-2 rounded-xl text-[11px] font-bold transition-all border cursor-pointer flex flex-col items-center gap-1 ${
+                    paymentMethod === 'cash'
+                      ? 'bg-red-600 text-white border-red-600 shadow-xs'
+                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Banknote className="w-4 h-4" />
+                  <span>מזומן</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('credit')}
+                  className={`py-2.5 px-2 rounded-xl text-[11px] font-bold transition-all border cursor-pointer flex flex-col items-center gap-1 ${
+                    paymentMethod === 'credit'
+                      ? 'bg-red-600 text-white border-red-600 shadow-xs'
+                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span>אשראי בהגעה</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('bit')}
+                  className={`py-2.5 px-2 rounded-xl text-[11px] font-bold transition-all border cursor-pointer flex flex-col items-center gap-1 ${
+                    paymentMethod === 'bit'
+                      ? 'bg-red-600 text-white border-red-600 shadow-xs'
+                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Smartphone className="w-4 h-4" />
+                  <span>ביט</span>
+                </button>
+              </div>
+
+              {paymentMethod === 'bit' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-[11px] text-slate-700 space-y-2">
+                  <p>
+                    פתחו את אפליקציית <b>Bit</b> ושלחו <b>₪{grandTotal}</b> למספר הטלפון של שרון:
+                  </p>
+                  <div className="flex items-center justify-between bg-white rounded-lg border border-blue-200 px-3 py-2">
+                    <span className="font-bold text-slate-800" dir="ltr">
+                      {PIZZERIA_CONTACT.phoneDisplay}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(PIZZERIA_CONTACT.phoneDial).then(() => {
+                          setBitCopied(true);
+                          setTimeout(() => setBitCopied(false), 1500);
+                        }).catch(() => {});
+                      }}
+                      className="flex items-center gap-1 text-blue-700 font-bold cursor-pointer"
+                    >
+                      {bitCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{bitCopied ? 'הועתק!' : 'העתק'}</span>
+                    </button>
+                  </div>
+                  <p className="text-slate-500">
+                    לתשומת לבכם: התשלום עצמו מתבצע ישירות באפליקציית Bit, לא דרך האתר. ההזמנה תישלח לשרון עם אמצעי התשלום שבחרתם.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Customer Contact Details */}
+            <div className="bg-white rounded-xl p-4 border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-800">
+                  פרטי הלקוח למשלוח ואישור:
+                </label>
+                {savedProfile && (
+                  <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-medium">
+                    מולאו אוטומטית מהזמנה קודמת
+                  </span>
+                )}
+              </div>
               <div className="space-y-2">
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="שם מלא *"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-red-500"
-                />
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="מספר טלפון להתקשרות *"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-red-500"
-                />
+                <div>
+                  <input
+                    id="input-customer-name"
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => {
+                      setCustomerName(e.target.value);
+                      if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: false }));
+                    }}
+                    placeholder="שם מלא *"
+                    aria-invalid={fieldErrors.name || undefined}
+                    className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none transition-colors ${
+                      fieldErrors.name
+                        ? 'border-red-500 ring-2 ring-red-200'
+                        : 'border-slate-200 focus:border-red-500'
+                    }`}
+                  />
+                  {fieldErrors.name && (
+                    <p className="text-[11px] text-red-600 font-bold mt-1">יש להזין שם מלא כדי לשלוח את ההזמנה</p>
+                  )}
+                </div>
+                <div>
+                  <input
+                    id="input-customer-phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      if (fieldErrors.phone) setFieldErrors((prev) => ({ ...prev, phone: false }));
+                    }}
+                    onBlur={handlePhoneBlur}
+                    placeholder="מספר טלפון להתקשרות *"
+                    aria-invalid={fieldErrors.phone || undefined}
+                    className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none transition-colors ${
+                      fieldErrors.phone
+                        ? 'border-red-500 ring-2 ring-red-200'
+                        : 'border-slate-200 focus:border-red-500'
+                    }`}
+                  />
+                  {fieldErrors.phone && (
+                    <p className="text-[11px] text-red-600 font-bold mt-1">יש להזין מספר טלפון כדי לשלוח את ההזמנה</p>
+                  )}
+                </div>
                 {deliveryType === 'delivery' && (
                   <div className="grid grid-cols-2 gap-2">
                     <input
@@ -515,7 +752,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         )}
 
         {/* Bottom Total & Order Buttons */}
-        {!orderCompleted && cartItems.length > 0 && (
+        {!processingPayment && !orderCompleted && cartItems.length > 0 && (
           <div className="bg-white p-4 sm:p-5 border-t border-slate-200 space-y-3 shadow-xs">
             <div className="space-y-1.5 text-xs text-slate-600">
               <div className="flex justify-between">
@@ -534,16 +771,23 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               </div>
             </div>
 
-            {/* WhatsApp Send Button */}
+            {submitError && (
+              <p className="text-xs text-red-600 font-bold text-center bg-red-50 border border-red-200 rounded-lg py-2 px-3">
+                לא הצלחנו לשלוח את ההזמנה. נסו שוב, או התקשרו ישירות לשרון.
+              </p>
+            )}
+
+            {/* Send Order Button */}
             <motion.button
-              id="btn-submit-order-whatsapp"
+              id="btn-submit-order"
               type="button"
               whileTap={{ scale: 0.98 }}
-              onClick={handleSendOrderWhatsApp}
-              className="w-full py-3.5 px-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-sm text-sm cursor-pointer transition-all"
+              onClick={handleSubmitOrder}
+              disabled={submitting}
+              className="w-full py-3.5 px-4 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-sm text-sm cursor-pointer transition-all"
             >
-              <MessageCircle className="w-5 h-5" />
-              <span>שליחת ההזמנה המלאה לוואטסאפ של שרון</span>
+              <Send className="w-5 h-5" />
+              <span>{submitting ? 'שולח...' : 'שליחת ההזמנה'}</span>
             </motion.button>
 
             {/* Direct Phone Call Alternative */}

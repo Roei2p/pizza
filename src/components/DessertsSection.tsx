@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { DESSERTS_LIST } from '../data/menuData';
 import { DessertItem, CartDessertItem } from '../types';
-import { Plus, Minus, Check, ShoppingBag, Sparkles, Heart } from 'lucide-react';
+import { Plus, Minus, Check, ShoppingBag, Sparkles, Heart } from '../icons/coreui';
+import { TiltCard } from './TiltCard';
 
 interface DessertsSectionProps {
   onAddDessert: (item: CartDessertItem) => void;
@@ -50,10 +51,10 @@ export const DessertsSection: React.FC<DessertsSectionProps> = ({ onAddDessert }
             <span>סיום מתוק ומפנק</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
-            אופציית קינוחים 🍰
+            קינוחים 🍰
           </h2>
           <p className="text-slate-600 text-sm sm:text-base leading-relaxed mt-1">
-            מאפי שוקולד חמים מהתנור, קלצונה נוטלה מושחת, מלבי אסלי וגלידות משובחות.
+            מלאווח חם מהתנור עם שוקולד מעל, לסיום מתוק לארוחה.
           </p>
         </div>
       </div>
@@ -65,10 +66,10 @@ export const DessertsSection: React.FC<DessertsSectionProps> = ({ onAddDessert }
           const qty = getQuantity(dessert.id);
 
           return (
-            <div
+            <TiltCard
               key={dessert.id}
               id={`dessert-card-${dessert.id}`}
-              className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
+              className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-lg transition-shadow flex flex-col justify-between group"
             >
               <div>
                 <div className="relative h-48 w-full rounded-xl overflow-hidden mb-4 bg-slate-100">
@@ -147,7 +148,7 @@ export const DessertsSection: React.FC<DessertsSectionProps> = ({ onAddDessert }
                   </motion.button>
                 </div>
               </div>
-            </div>
+            </TiltCard>
           );
         })}
       </div>

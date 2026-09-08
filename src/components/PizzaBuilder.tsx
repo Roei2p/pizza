@@ -1,25 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   PIZZA_SIZES,
   PIZZA_CRUSTS,
   TOPPINGS_LIST,
+  DIETARY_OPTIONS,
 } from '../data/menuData';
 import {
   PizzaSizeId,
   CrustId,
+  DietaryId,
   QuarterId,
   PortionMode,
   AppliedTopping,
   CustomPizzaItem,
 } from '../types';
-import { Check, Plus, Minus, Info, Sparkles, Trash2, PieChart, RotateCcw } from 'lucide-react';
+import { Check, Plus, Minus, Info, Sparkles, Trash2, PieChart, RotateCcw, LayoutGrid } from '../icons/coreui';
+import { Box } from 'lucide-react';
+import { TiltCard } from './TiltCard';
+
+const Pizza3DView = lazy(() => import('./Pizza3DView').then((m) => ({ default: m.Pizza3DView })));
 
 interface PizzaBuilderProps {
   onAddToCart: (pizza: CustomPizzaItem) => void;
 }
 
+const SIZE_SCALE_3D: Record<PizzaSizeId, number> = {
+  personal: 0.75,
+  family: 0.95,
+  giant: 1.1,
+};
+
+const TOPPING_CATEGORIES: { id: 'veggies' | 'cheese' | 'specials'; label: string; icon: string }[] = [
+  { id: 'veggies', label: 'ירקות ותבלינים', icon: '🥬' },
+  { id: 'cheese', label: 'גבינות', icon: '🧀' },
+  { id: 'specials', label: 'תוספות מיוחדות', icon: '⭐' },
+];
+
 export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
+  const [dietary, setDietary] = useState<DietaryId>('regular');
   const [selectedSize, setSelectedSize] = useState<PizzaSizeId>('family');
   const [selectedCrust, setSelectedCrust] = useState<CrustId>('classic');
   const [sauce, setSauce] = useState<'classic_tomato' | 'spicy_tomato' | 'bianco_cream'>('classic_tomato');
@@ -36,6 +55,10 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
 
   // Feedback state for added animation
   const [addedAnimation, setAddedAnimation] = useState(false);
+
+  // Visualizer display mode: the flat 2D circle is the actual input for
+  // choosing quarters; the 3D view is a presentational preview (beta).
+  const [viewMode, setViewMode] = useState<'flat' | '3d'>('flat');
 
   // Handle setting portion preset
   const handleSetPortionMode = (mode: PortionMode) => {
@@ -126,9 +149,35 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
     setAppliedToppings(appliedToppings.filter((at) => at.toppingId !== toppingId));
   };
 
+  // Dietary variant (regular / vegan / gluten-free) — constrains which sizes,
+  // crusts and toppings are offered, matching Sharon's real menu rules.
+  const dietaryObj = DIETARY_OPTIONS.find((d) => d.id === dietary) || DIETARY_OPTIONS[0];
+  const availableSizes = PIZZA_SIZES.filter((s) => dietaryObj.sizesAllowed.includes(s.id));
+  const availableCrusts = dietary === 'vegan' ? PIZZA_CRUSTS.filter((c) => c.id !== 'cheese_crust') : PIZZA_CRUSTS;
+  const availableToppings = dietary === 'vegan' ? TOPPINGS_LIST.filter((t) => t.vegan) : TOPPINGS_LIST;
+
+  const handleSetDietary = (id: typeof dietary) => {
+    setDietary(id);
+    const newDietaryObj = DIETARY_OPTIONS.find((d) => d.id === id)!;
+
+    // Gluten-free is personal-size-only with a fixed classic-style dough.
+    if (id === 'gluten_free') {
+      if (!newDietaryObj.sizesAllowed.includes(selectedSize)) setSelectedSize('personal');
+      setSelectedCrust('classic');
+    }
+
+    // Vegan drops the cheese-stuffed crust and any non-vegan toppings already applied.
+    if (id === 'vegan') {
+      if (selectedCrust === 'cheese_crust') setSelectedCrust('classic');
+      setAppliedToppings((prev) =>
+        prev.filter((at) => TOPPINGS_LIST.find((t) => t.id === at.toppingId)?.vegan)
+      );
+    }
+  };
+
   // Calculate Unit Price
-  const sizeObj = PIZZA_SIZES.find((s) => s.id === selectedSize) || PIZZA_SIZES[1];
-  const crustObj = PIZZA_CRUSTS.find((c) => c.id === selectedCrust) || PIZZA_CRUSTS[0];
+  const sizeObj = availableSizes.find((s) => s.id === selectedSize) || availableSizes[0];
+  const crustObj = availableCrusts.find((c) => c.id === selectedCrust) || availableCrusts[0];
 
   const toppingsPrice = appliedToppings.reduce((acc, item) => {
     const toppingData = TOPPINGS_LIST.find((t) => t.id === item.toppingId);
@@ -141,7 +190,7 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
     }
   }, 0);
 
-  const unitPrice = sizeObj.basePrice + crustObj.extraPrice + toppingsPrice;
+  const unitPrice = sizeObj.basePrice + dietaryObj.extraPrice + crustObj.extraPrice + toppingsPrice;
   const totalPrice = unitPrice * quantity;
 
   // Add to cart action
@@ -150,6 +199,7 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
       id: `pizza-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       size: selectedSize,
       crust: selectedCrust,
+      dietary,
       sauce,
       appliedToppings: [...appliedToppings],
       quantity,
@@ -178,38 +228,44 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
 
   return (
     <div id="pizza-builder-section" className="w-full" dir="rtl">
-      {/* Header Banner - Professional Polish Style */}
-      <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-50 border border-red-200 rounded-full text-red-700 text-xs font-bold mb-2">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>התאמה אישית מלאה לפי רבעים ומשולשים</span>
+      {/* Header Banner - cinematic photo backdrop matching the welcome hero */}
+      <div
+        className="relative overflow-hidden rounded-2xl mb-8 shadow-lg bg-slate-900 bg-cover bg-center"
+        style={{ backgroundImage: `url('${import.meta.env.BASE_URL}assets/hero-pizza-poster-v2.jpg')` }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/75 to-slate-950/40" />
+        <div className="relative p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-amber-100 text-xs font-bold mb-2">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>התאמה אישית מלאה לפי רבעים ומשולשים</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight drop-shadow-lg">
+              הרכבת הפיצה שלך 🍕
+            </h2>
+            <p className="text-white/80 text-sm sm:text-base leading-relaxed mt-1 max-w-xl">
+              בחרו את כמות הפיצות, גודל המגש, וסוג הבצק. תוכלו לחלק את התוספות לפי רבע, חצי, 3/4 או פיצה שלמה – ולבחור מספר תוספות באותו המשולש!
+            </p>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
-            הרכבת הפיצה שלך 🍕
-          </h2>
-          <p className="text-slate-600 text-sm sm:text-base leading-relaxed mt-1">
-            בחרו את כמות הפיצות, גודל המגש, וסוג הבצק. תוכלו לחלק את התוספות לפי רבע, חצי, 3/4 או פיצה שלמה – ולבחור מספר תוספות באותו המשולש!
-          </p>
-        </div>
-        <div className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-full border border-slate-200 shrink-0">
-          <span className="text-sm font-bold text-slate-600">כמות פיצות:</span>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="w-7 h-7 bg-white rounded-full flex items-center justify-center text-slate-700 font-bold hover:bg-slate-200 border border-slate-200 shadow-xs text-xs"
-            >
-              -
-            </button>
-            <span className="w-8 text-center font-black text-slate-800 text-base">{quantity}</span>
-            <button
-              type="button"
-              onClick={() => setQuantity(quantity + 1)}
-              className="w-7 h-7 bg-white rounded-full flex items-center justify-center text-slate-700 font-bold hover:bg-slate-200 border border-slate-200 shadow-xs text-xs"
-            >
-              +
-            </button>
+          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 shrink-0">
+            <span className="text-sm font-bold text-white/90">כמות פיצות:</span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                className="w-7 h-7 bg-white rounded-full flex items-center justify-center text-slate-700 font-bold hover:bg-slate-100 shadow-xs text-xs cursor-pointer"
+              >
+                -
+              </button>
+              <span className="w-8 text-center font-black text-white text-base">{quantity}</span>
+              <button
+                type="button"
+                onClick={() => setQuantity(quantity + 1)}
+                className="w-7 h-7 bg-white rounded-full flex items-center justify-center text-slate-700 font-bold hover:bg-slate-100 shadow-xs text-xs cursor-pointer"
+              >
+                +
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -217,6 +273,55 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* LEFT / CENTER COLUMN: Step-by-step Builder Controls */}
         <div className="lg:col-span-7 space-y-6">
+          {/* DIETARY VARIANT SELECTOR */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+            <h3 className="font-bold text-lg text-slate-800 mb-3">סוג הפיצה</h3>
+            <div className="grid grid-cols-3 gap-2.5">
+              {DIETARY_OPTIONS.map((opt) => {
+                const isSelected = dietary === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    id={`btn-dietary-${opt.id}`}
+                    type="button"
+                    onClick={() => handleSetDietary(opt.id)}
+                    className={`p-3 rounded-xl text-center transition-all text-xs cursor-pointer ${
+                      isSelected
+                        ? 'border-2 border-red-600 bg-red-50 font-bold text-red-700 shadow-sm'
+                        : 'border border-slate-200 hover:border-slate-300 text-slate-700 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="text-lg mb-1">{opt.icon}</div>
+                    <div className="font-bold text-slate-800">{opt.name}</div>
+                    {opt.extraPrice > 0 && (
+                      <div className="text-[10px] text-red-700 font-bold mt-0.5">+₪{opt.extraPrice}</div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {dietary === 'gluten_free' && (
+              <div className="mt-3 flex items-start gap-3 text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-2.5">
+                <img
+                  src={`${import.meta.env.BASE_URL}assets/pizza-gluten-free.jpg`}
+                  alt="פיצה ללא גלוטן - בצק מרובע ייעודי"
+                  className="w-16 h-16 rounded-lg object-cover shrink-0 border border-slate-200"
+                  loading="lazy"
+                />
+                <div className="flex items-start gap-1.5 pt-0.5">
+                  <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                  <span>פיצה ללא גלוטן זמינה בגודל אישי בלבד, עם בצק מרובע ייעודי קבוע (ללא שדרוג שוליים).</span>
+                </div>
+              </div>
+            )}
+            {dietary === 'vegan' && (
+              <div className="mt-3 flex items-start gap-1.5 text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-2.5">
+                <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                <span>בגרסה הטבעונית לא זמינים שוליים ממולאים בגבינה, וכן תוספות המכילות מוצרי חלב או דגים.</span>
+              </div>
+            )}
+          </div>
+
           {/* STEP 1: SIZE SELECTION */}
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
@@ -229,39 +334,40 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
               <span className="text-xs text-slate-500 font-medium">כולל בצק טרי ורוטב</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {PIZZA_SIZES.map((size) => {
+            <div className={`grid grid-cols-1 gap-3 ${availableSizes.length > 1 ? 'sm:grid-cols-3' : 'sm:max-w-xs'}`}>
+              {availableSizes.map((size) => {
                 const isSelected = selectedSize === size.id;
                 return (
-                  <button
-                    key={size.id}
-                    id={`btn-size-${size.id}`}
-                    type="button"
-                    onClick={() => setSelectedSize(size.id)}
-                    className={`relative p-4 rounded-xl text-right transition-all flex flex-col justify-between cursor-pointer ${
-                      isSelected
-                        ? 'border-2 border-red-600 bg-red-50 text-red-700 font-bold shadow-sm'
-                        : 'border border-slate-200 hover:border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    {size.popular && (
-                      <span className="absolute -top-2.5 left-3 bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs">
-                        הכי נמכר 🔥
-                      </span>
-                    )}
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-slate-800 text-sm">{size.name}</span>
-                        {isSelected && <Check className="w-4 h-4 text-red-600" />}
+                  <TiltCard key={size.id} className="rounded-xl">
+                    <button
+                      id={`btn-size-${size.id}`}
+                      type="button"
+                      onClick={() => setSelectedSize(size.id)}
+                      className={`relative w-full h-full p-4 rounded-xl text-right transition-colors flex flex-col justify-between cursor-pointer ${
+                        isSelected
+                          ? 'border-2 border-red-600 bg-red-50 text-red-700 font-bold shadow-sm'
+                          : 'border border-slate-200 hover:border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {size.popular && (
+                        <span className="absolute -top-2.5 left-3 bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs">
+                          הכי נמכר 🔥
+                        </span>
+                      )}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-bold text-slate-800 text-sm">{size.name}</span>
+                          {isSelected && <Check className="w-4 h-4 text-red-600" />}
+                        </div>
+                        <p className="text-xs text-slate-500 mb-2 font-normal">
+                          {size.slices} משולשים • קוטר {size.diameter}
+                        </p>
                       </div>
-                      <p className="text-xs text-slate-500 mb-2 font-normal">
-                        {size.slices} משולשים • קוטר {size.diameter}
-                      </p>
-                    </div>
-                    <div className="font-black text-red-700 text-base">
-                      ₪{size.basePrice}
-                    </div>
-                  </button>
+                      <div className="font-black text-red-700 text-base">
+                        ₪{size.basePrice}
+                      </div>
+                    </button>
+                  </TiltCard>
                 );
               })}
             </div>
@@ -283,36 +389,45 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
                 <label className="block text-xs font-bold text-slate-600 mb-2">
                   סוג הבצק:
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  {PIZZA_CRUSTS.map((crust) => {
-                    const isSelected = selectedCrust === crust.id;
-                    return (
-                      <button
-                        key={crust.id}
-                        id={`btn-crust-${crust.id}`}
-                        type="button"
-                        onClick={() => setSelectedCrust(crust.id)}
-                        className={`p-3 rounded-xl text-right transition-all text-xs cursor-pointer ${
-                          isSelected
-                            ? 'border-2 border-red-600 bg-red-50 font-bold text-red-700 shadow-sm'
-                            : 'border border-slate-200 hover:border-slate-300 text-slate-700 bg-white hover:bg-slate-50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-slate-800">{crust.name}</span>
-                          {crust.extraPrice > 0 && (
-                            <span className="text-red-700 font-extrabold text-[11px]">
-                              +₪{crust.extraPrice}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[10px] text-slate-500 font-normal line-clamp-2">
-                          {crust.description}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
+                {dietary === 'gluten_free' ? (
+                  <div className="p-3 rounded-xl border-2 border-red-600 bg-red-50 text-xs">
+                    <span className="font-bold text-slate-800">בצק ייעודי ללא גלוטן</span>
+                    <p className="text-[10px] text-slate-500 font-normal mt-1">
+                      נאפה בציוד נפרד ככל האפשר, אך המטבח אינו סטרילי לחלוטין
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {availableCrusts.map((crust) => {
+                      const isSelected = selectedCrust === crust.id;
+                      return (
+                        <button
+                          key={crust.id}
+                          id={`btn-crust-${crust.id}`}
+                          type="button"
+                          onClick={() => setSelectedCrust(crust.id)}
+                          className={`p-3 rounded-xl text-right transition-all text-xs cursor-pointer ${
+                            isSelected
+                              ? 'border-2 border-red-600 bg-red-50 font-bold text-red-700 shadow-sm'
+                              : 'border border-slate-200 hover:border-slate-300 text-slate-700 bg-white hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-slate-800">{crust.name}</span>
+                            {crust.extraPrice > 0 && (
+                              <span className="text-red-700 font-extrabold text-[11px]">
+                                +₪{crust.extraPrice}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-500 font-normal line-clamp-2">
+                            {crust.description}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -455,72 +570,93 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
               </div>
             </div>
 
-            {/* Toppings Grid with multi-select on the active portion */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
+            {/* Toppings Grid with multi-select on the active portion, grouped by category */}
+            <div className="space-y-5">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <h4 className="font-bold text-slate-700 text-sm">
                   2. הוסף תוספות למשולשים שבחרת ({getPortionLabel(activeQuarters)}):
                 </h4>
+                <div className="flex items-center gap-3 text-[10px] text-slate-500 font-medium">
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded-full bg-red-600 inline-block" /> על כל המשולשים שנבחרו
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded-full bg-amber-500 inline-block" /> על חלק מהם
+                  </span>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {TOPPINGS_LIST.map((topping) => {
-                  const applied = appliedToppings.find((at) => at.toppingId === topping.id);
-                  const isFullyOnActive =
-                    applied && activeQuarters.every((q) => applied.quarters.includes(q));
-                  const isPartiallyOnActive =
-                    applied && activeQuarters.some((q) => applied.quarters.includes(q));
+              {TOPPING_CATEGORIES.map((cat) => {
+                const items = availableToppings.filter((t) => t.category === cat.id);
+                if (items.length === 0) return null;
+                return (
+                  <div key={cat.id}>
+                    <h5 className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1.5">
+                      <span>{cat.icon}</span>
+                      <span>{cat.label}</span>
+                    </h5>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {items.map((topping) => {
+                        const applied = appliedToppings.find((at) => at.toppingId === topping.id);
+                        const isFullyOnActive =
+                          applied && activeQuarters.every((q) => applied.quarters.includes(q));
+                        const isPartiallyOnActive =
+                          applied && activeQuarters.some((q) => applied.quarters.includes(q));
 
-                  return (
-                    <button
-                      key={topping.id}
-                      id={`btn-topping-${topping.id}`}
-                      type="button"
-                      onClick={() => toggleToppingOnActiveQuarters(topping.id)}
-                      className={`p-2.5 rounded-xl text-right transition-all border flex flex-col justify-between cursor-pointer group relative ${
-                        isFullyOnActive
-                          ? 'border-2 border-red-600 bg-red-50 text-red-700 shadow-sm'
-                          : isPartiallyOnActive
-                          ? 'border border-amber-400 bg-amber-50/50 text-slate-800'
-                          : 'border-slate-200 hover:bg-slate-50 bg-white text-slate-700 hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-1 mb-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-lg">{topping.icon}</span>
-                          <span className="font-bold text-xs leading-tight text-slate-800">
-                            {topping.name}
-                          </span>
-                        </div>
-                        {isFullyOnActive ? (
-                          <span className="w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-xs shrink-0 font-bold">
-                            ✓
-                          </span>
-                        ) : isPartiallyOnActive ? (
-                          <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
-                            ½
-                          </span>
-                        ) : (
-                          <span className="w-5 h-5 rounded-full border border-slate-300 group-hover:border-slate-400 text-slate-400 flex items-center justify-center text-xs shrink-0">
-                            +
-                          </span>
-                        )}
-                      </div>
+                        return (
+                          <button
+                            key={topping.id}
+                            id={`btn-topping-${topping.id}`}
+                            type="button"
+                            onClick={() => toggleToppingOnActiveQuarters(topping.id)}
+                            aria-pressed={!!isFullyOnActive}
+                            className={`p-2.5 rounded-xl text-right transition-all border flex flex-col justify-between cursor-pointer group relative focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 ${
+                              isFullyOnActive
+                                ? 'border-2 border-red-600 bg-red-50 text-red-700 shadow-sm'
+                                : isPartiallyOnActive
+                                ? 'border border-amber-400 bg-amber-50/50 text-slate-800'
+                                : 'border-slate-200 hover:bg-slate-50 bg-white text-slate-700 hover:border-slate-300'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-1 mb-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-lg">{topping.icon}</span>
+                                <span className="font-bold text-xs leading-tight text-slate-800">
+                                  {topping.name}
+                                </span>
+                              </div>
+                              {isFullyOnActive ? (
+                                <span className="w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-xs shrink-0 font-bold">
+                                  ✓
+                                </span>
+                              ) : isPartiallyOnActive ? (
+                                <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                                  ½
+                                </span>
+                              ) : (
+                                <span className="w-5 h-5 rounded-full border border-slate-300 group-hover:border-slate-400 text-slate-400 flex items-center justify-center text-xs shrink-0">
+                                  +
+                                </span>
+                              )}
+                            </div>
 
-                      <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1">
-                        <span>₪{topping.priceWhole} שלם</span>
-                        <span>₪{topping.pricePerQuarter} לרבע</span>
-                      </div>
+                            <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1">
+                              <span>₪{topping.priceWhole} שלם</span>
+                              <span>₪{topping.pricePerQuarter} לרבע</span>
+                            </div>
 
-                      {applied && (
-                        <div className="mt-1.5 pt-1 border-t border-slate-200 text-[10px] text-red-700 font-bold flex items-center justify-between">
-                          <span>{getPortionLabel(applied.quarters)}</span>
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                            {applied && (
+                              <div className="mt-1.5 pt-1 border-t border-slate-200 text-[10px] text-red-700 font-bold flex items-center justify-between">
+                                <span>{getPortionLabel(applied.quarters)}</span>
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Currently Applied Toppings Summary list */}
@@ -578,21 +714,60 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
         <div className="lg:col-span-5 sticky top-24 space-y-6">
           {/* Visual Interactive Pizza Board - Professional Polish Style */}
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm text-slate-800">
-            <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-3">
+            <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-3 gap-2 flex-wrap">
               <div>
                 <h4 className="font-black text-base text-slate-800 flex items-center gap-1.5">
                   <span>הדמיית הפיצה שלך</span>
                 </h4>
                 <p className="text-[11px] text-slate-400">
-                  לחצו על רבע ישירות במעגל כדי לבחור או להסיר אותו
+                  {viewMode === 'flat'
+                    ? 'לחצו על רבע ישירות במעגל כדי לבחור או להסיר אותו'
+                    : 'גררו כדי לסובב, גלגלו כדי להתקרב'}
                 </p>
               </div>
-              <span className="text-xs bg-red-50 text-red-700 font-bold px-2.5 py-1 rounded-full border border-red-200">
-                {sizeObj.name}
-              </span>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center bg-slate-100 rounded-full p-1 border border-slate-200">
+                  <button
+                    type="button"
+                    id="btn-view-flat"
+                    onClick={() => setViewMode('flat')}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                      viewMode === 'flat' ? 'bg-white text-red-700 shadow-xs' : 'text-slate-500'
+                    }`}
+                  >
+                    <LayoutGrid className="w-3 h-3" />
+                    <span>עריכה</span>
+                  </button>
+                  <button
+                    type="button"
+                    id="btn-view-3d"
+                    onClick={() => setViewMode('3d')}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                      viewMode === '3d' ? 'bg-white text-red-700 shadow-xs' : 'text-slate-500'
+                    }`}
+                  >
+                    <Box className="w-3 h-3" />
+                    <span>3D</span>
+                  </button>
+                </div>
+                <span className="text-xs bg-red-50 text-red-700 font-bold px-2.5 py-1 rounded-full border border-red-200 shrink-0">
+                  {dietary !== 'regular' && `${dietaryObj.icon} `}{sizeObj.name}
+                </span>
+              </div>
             </div>
 
-            {/* Circular Pizza Interactive Diagram as in Design HTML */}
+            {viewMode === '3d' ? (
+              <Suspense
+                fallback={
+                  <div className="w-full h-72 sm:h-80 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 text-xs">
+                    טוען תצוגת 3D...
+                  </div>
+                }
+              >
+                <Pizza3DView appliedToppings={appliedToppings} sizeScale={SIZE_SCALE_3D[selectedSize]} />
+              </Suspense>
+            ) : (
+            /* Circular Pizza Interactive Diagram as in Design HTML */
             <div className="relative w-64 h-64 mx-auto my-6 bg-amber-50 border-4 border-dashed border-amber-200 rounded-full flex items-center justify-center">
               {/* Crossed lines across quarters */}
               <div className="absolute w-full h-[1px] bg-amber-200 rotate-45 pointer-events-none"></div>
@@ -728,6 +903,7 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
                 </button>
               </div>
             </div>
+            )}
 
             {/* Selection Guidance */}
             <div className="mt-3 text-center">
@@ -749,6 +925,12 @@ export const PizzaBuilder: React.FC<PizzaBuilderProps> = ({ onAddToCart }) => {
                 <span>{sizeObj.name}</span>
                 <span className="font-bold text-slate-800">₪{sizeObj.basePrice}</span>
               </div>
+              {dietaryObj.extraPrice > 0 && (
+                <div className="flex justify-between">
+                  <span>{dietaryObj.icon} {dietaryObj.name}</span>
+                  <span className="font-bold text-slate-800">+₪{dietaryObj.extraPrice}</span>
+                </div>
+              )}
               {crustObj.extraPrice > 0 && (
                 <div className="flex justify-between">
                   <span>{crustObj.name}</span>
