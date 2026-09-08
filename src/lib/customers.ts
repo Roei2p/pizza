@@ -1,5 +1,5 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, backendUsable } from './firebase';
 import { CustomerProfile } from '../utils/customerProfile';
 
 const CUSTOMERS_COLLECTION = 'customers';
@@ -12,6 +12,7 @@ function normalizePhone(phone: string): string {
 }
 
 export async function lookupCustomerByPhone(phone: string): Promise<CustomerProfile | null> {
+  if (!backendUsable) return null;
   const key = normalizePhone(phone);
   if (!key) return null;
   const snap = await getDoc(doc(db, CUSTOMERS_COLLECTION, key));
@@ -19,6 +20,7 @@ export async function lookupCustomerByPhone(phone: string): Promise<CustomerProf
 }
 
 export async function saveCustomerToCloud(profile: CustomerProfile): Promise<void> {
+  if (!backendUsable) return;
   const key = normalizePhone(profile.phone);
   if (!key) return;
   await setDoc(doc(db, CUSTOMERS_COLLECTION, key), profile, { merge: true });

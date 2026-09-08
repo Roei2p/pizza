@@ -9,12 +9,15 @@ import {
   orderBy,
   Unsubscribe,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, backendUsable } from './firebase';
 import { OrderDoc, OrderStatus } from '../types';
 
 const ORDERS_COLLECTION = 'orders';
 
 export async function createOrder(order: Omit<OrderDoc, 'id' | 'status' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  if (!backendUsable) {
+    throw new Error('Firebase backend not configured (no VITE_FIREBASE_PROJECT_ID and not running against the emulator)');
+  }
   const now = Date.now();
   const ref = await addDoc(collection(db, ORDERS_COLLECTION), {
     ...order,
@@ -26,6 +29,10 @@ export async function createOrder(order: Omit<OrderDoc, 'id' | 'status' | 'creat
 }
 
 export function subscribeToOrder(orderId: string, onChange: (order: OrderDoc | null) => void): Unsubscribe {
+  if (!backendUsable) {
+    onChange(null);
+    return () => {};
+  }
   return onSnapshot(
     doc(db, ORDERS_COLLECTION, orderId),
     (snap) => {
@@ -41,6 +48,10 @@ export function subscribeToOrder(orderId: string, onChange: (order: OrderDoc | n
 
 // Sharon's dashboard: every order that isn't finished yet, newest first.
 export function subscribeToActiveOrders(onChange: (orders: OrderDoc[]) => void): Unsubscribe {
+  if (!backendUsable) {
+    onChange([]);
+    return () => {};
+  }
   const q = query(
     collection(db, ORDERS_COLLECTION),
     where('status', '!=', 'completed'),
