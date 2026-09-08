@@ -3,22 +3,10 @@ import { onAuthStateChanged, signInWithEmailAndPassword, signOut, User } from 'f
 import { auth } from '../lib/firebaseAuth';
 import { subscribeToActiveOrders, updateOrderStatus } from '../lib/orders';
 import { nextStatus, STATUS_LABELS } from '../lib/orderStages';
-import { OrderDoc, CartItem } from '../types';
-import { PIZZA_SIZES, DIETARY_OPTIONS } from '../data/menuData';
-import { PhoneCall, MapPin, Check } from '../icons/coreui';
-
-function summarizeItem(item: CartItem): string {
-  if (item.type === 'pizza') {
-    const size = PIZZA_SIZES.find((s) => s.id === item.data.size)?.name ?? item.data.size;
-    const dietary = DIETARY_OPTIONS.find((d) => d.id === item.data.dietary);
-    const dietaryTag = dietary && dietary.id !== 'regular' ? ` (${dietary.name})` : '';
-    const toppingsTag = item.data.appliedToppings.length ? `, ${item.data.appliedToppings.length} תוספות` : '';
-    return `${item.data.quantity}x פיצה ${size}${dietaryTag}${toppingsTag}`;
-  }
-  if (item.type === 'drink') return `${item.data.quantity}x ${item.data.name}`;
-  if (item.type === 'dessert') return `${item.data.quantity}x ${item.data.name}`;
-  return `${item.data.quantity}x ${item.data.name}`;
-}
+import { OrderDoc } from '../types';
+import { PhoneCall, MapPin, Check, Sparkles, Send } from '../icons/coreui';
+import { summarizeItem } from '../lib/itemSummary';
+import { askGemini, geminiEnabled } from '../lib/gemini';
 
 const LoginScreen: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -127,6 +115,71 @@ const OrderCard: React.FC<{ order: OrderDoc }> = ({ order }) => {
   );
 };
 
+function ordersToContext(orders: OrderDoc[]): string {
+  if (orders.length === 0) return 'אין הזמנות פעילות כרגע.';
+  return orders
+    .map((o, i) => {
+      const items = o.items.map(summarizeItem).join('; ');
+      return `${i + 1}. לקוח: ${o.customerName}, סטטוס: ${STATUS_LABELS[o.status]}, סוג: ${o.deliveryType === 'delivery' ? 'משלוח' : 'איסוף'}, סכום: ₪${o.grandTotal}, פריטים: ${items}`;
+    })
+    .join('\n');
+}
+
+const DashboardAssistant: React.FC<{ orders: OrderDoc[] }> = ({ orders }) => {
+  const [question, setQuestion] = useState('');
+  const [answer, setAnswer] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleAsk = async () => {
+    const q = question.trim();
+    if (!q || loading) return;
+    setLoading(true);
+    setAnswer('');
+    try {
+      const reply = await askGemini(
+        [{ role: 'user', text: q }],
+        `אתם עוזר/ת אישי/ת לשרון, בעלת הפיצרייה. ענו בעברית, קצר וממוקד, על סמך רשימת ההזמנות הפעילות הבאה בלבד:\n\n${ordersToContext(orders)}`,
+      );
+      setAnswer(reply);
+    } catch {
+      setAnswer('לא הצלחתי לענות כרגע.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!geminiEnabled) return null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Sparkles className="w-4 h-4 text-amber-500" />
+        <h2 className="font-bold text-sm text-slate-800">שאלו את העוזר על ההזמנות הפעילות</h2>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleAsk()}
+          placeholder="לדוגמה: כמה הזמנות משלוח יש כרגע?"
+          className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-red-500"
+        />
+        <button
+          type="button"
+          onClick={handleAsk}
+          disabled={loading || !question.trim()}
+          className="w-10 h-10 shrink-0 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl flex items-center justify-center cursor-pointer"
+        >
+          <Send className="w-4 h-4" />
+        </button>
+      </div>
+      {loading && <p className="text-xs text-slate-400">חושב/ת...</p>}
+      {answer && <p className="text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-3 leading-relaxed">{answer}</p>}
+    </div>
+  );
+};
+
 export const SharonDashboard: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -155,6 +208,8 @@ export const SharonDashboard: React.FC = () => {
             התנתקות
           </button>
         </div>
+
+        <DashboardAssistant orders={orders} />
 
         {orders.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-slate-400 text-sm">

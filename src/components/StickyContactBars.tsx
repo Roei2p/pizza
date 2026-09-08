@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { PhoneCall, MessageCircle, HelpCircle, X, ShieldCheck } from '../icons/coreui';
+import { PhoneCall, MessageCircle, HelpCircle, X, ShieldCheck, Sparkles } from '../icons/coreui';
 import { PIZZERIA_CONTACT } from '../data/menuData';
+import { MenuChatbot } from './MenuChatbot';
 
 export const StickyContactBars: React.FC = () => {
   const [showLargeOrderModal, setShowLargeOrderModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showChatbot, setShowChatbot] = useState(false);
 
   const whatsappMessage = encodeURIComponent(
     'שלום שרון! הגעתי מהאתר שלך, ואני מעוניין לתאם הזמנה גדולה של פיצות לאירוע / מסיבה לכמה ימים קדימה.'
@@ -61,7 +63,30 @@ export const StickyContactBars: React.FC = () => {
             עזרה ותמיכה
           </span>
         </motion.button>
+
+        <motion.button
+          id="btn-open-chatbot"
+          type="button"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.6, type: 'spring', stiffness: 260, damping: 18 }}
+          whileHover={{ scale: 1.06 }}
+          whileTap={{ scale: 0.94 }}
+          onClick={() => setShowChatbot((v) => !v)}
+          title="שאלו את העוזר של שרון"
+          aria-label="פתיחת צ'אטבוט לשאלות על התפריט"
+          className="group relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-slate-900 hover:bg-slate-800 text-white shadow-lg flex items-center justify-center cursor-pointer ring-4 ring-white"
+        >
+          <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
+          <span className="pointer-events-none absolute right-full mr-3 top-1/2 -translate-y-1/2 whitespace-nowrap bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hidden sm:block">
+            שאלו את העוזר
+          </span>
+        </motion.button>
       </div>
+
+      <AnimatePresence>
+        <MenuChatbot isOpen={showChatbot} onClose={() => setShowChatbot(false)} />
+      </AnimatePresence>
 
       {/* Quick direct call button, bottom-right, single small pill */}
       <motion.a

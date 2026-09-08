@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CartItem, CustomPizzaItem, QuarterId } from '../types';
 import { PIZZERIA_CONTACT, PIZZA_SIZES, PIZZA_CRUSTS, TOPPINGS_LIST, DIETARY_OPTIONS } from '../data/menuData';
-import { X, Trash2, Plus, Minus, ShoppingBag, Send, PhoneCall, Check, MapPin, User, RotateCcw } from '../icons/coreui';
+import { X, Trash2, Plus, Minus, ShoppingBag, Send, PhoneCall, Check, MapPin, User, RotateCcw, Sparkles } from '../icons/coreui';
 import confetti from 'canvas-confetti';
 import { OrderTracker } from './OrderTracker';
 import { CustomerProfile, loadCustomerProfile, saveCustomerProfile } from '../utils/customerProfile';
 import { createOrder } from '../lib/orders';
 import { lookupCustomerByPhone, saveCustomerToCloud } from '../lib/customers';
+import { askGemini, geminiEnabled } from '../lib/gemini';
+import { buildMenuContext } from '../lib/menuContext';
+import { summarizeItem } from '../lib/itemSummary';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -56,6 +59,32 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     setStreet(cloudProfile.street);
     setDeliveryType(cloudProfile.deliveryType);
   };
+
+  // One-time AI suggestion for a returning customer with an empty cart,
+  // based on what they ordered last time. Fetched once and cached in state
+  // rather than on every render.
+  const [aiTip, setAiTip] = useState<string | null>(null);
+  useEffect(() => {
+    if (!geminiEnabled || cartItems.length > 0 || !savedProfile || savedProfile.lastOrderItems.length === 0) return;
+    let cancelled = false;
+    const orderSummary = savedProfile.lastOrderItems.map(summarizeItem).join(', ');
+    askGemini(
+      [
+        {
+          role: 'user',
+          text: `ההזמנה הקודמת של הלקוח כללה: ${orderSummary}. כתבו לו המלצה קצרה (משפט אחד, ידידותי, בעברית) למה לנסות הפעם — יכול להיות תוספת שמשלימה את מה שהוא אוהב, או קינוח/שתייה שמתאימים. אל תמציאו פריטים שלא ברשימת התפריט.`,
+        },
+      ],
+      `אתם עוזר המלצות של "${PIZZERIA_CONTACT.name}". ${buildMenuContext()}`,
+    )
+      .then((text) => {
+        if (!cancelled) setAiTip(text);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [savedProfile, cartItems.length]);
 
   // Portion label helper for cart
   const getPortionLabel = (quarters: QuarterId[]) => {
@@ -224,6 +253,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>הזמינו שוב את ההזמנה האחרונה שלכם</span>
                 </button>
+                {aiTip && (
+                  <div className="mt-3 pt-3 border-t border-amber-200 flex items-start gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-amber-800 leading-relaxed">{aiTip}</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
