@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CartItem, CustomPizzaItem, QuarterId } from '../types';
 import { PIZZERIA_CONTACT, PIZZA_SIZES, PIZZA_CRUSTS, TOPPINGS_LIST, DIETARY_OPTIONS } from '../data/menuData';
-import { X, Trash2, Plus, Minus, ShoppingBag, Send, PhoneCall, Check, MapPin, User, RotateCcw, Sparkles } from '../icons/coreui';
+import { X, Trash2, Plus, Minus, ShoppingBag, Send, PhoneCall, Check, MapPin, User, RotateCcw, Sparkles, Banknote, CreditCard, Smartphone, Copy } from '../icons/coreui';
 import confetti from 'canvas-confetti';
 import { OrderTracker } from './OrderTracker';
 import { CustomerProfile, loadCustomerProfile, saveCustomerProfile } from '../utils/customerProfile';
@@ -41,6 +41,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const [city, setCity] = useState(savedProfile?.city ?? '');
   const [street, setStreet] = useState(savedProfile?.street ?? '');
   const [notes, setNotes] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit' | 'bit'>(savedProfile?.paymentMethod ?? 'cash');
+  const [bitCopied, setBitCopied] = useState(false);
   const [orderCompleted, setOrderCompleted] = useState(false);
   const [liveOrderId, setLiveOrderId] = useState<string | undefined>(undefined);
   const [submitError, setSubmitError] = useState(false);
@@ -58,6 +60,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     setCity(cloudProfile.city);
     setStreet(cloudProfile.street);
     setDeliveryType(cloudProfile.deliveryType);
+    setPaymentMethod(cloudProfile.paymentMethod ?? 'cash');
   };
 
   // One-time AI suggestion for a returning customer with an empty cart,
@@ -121,7 +124,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       deliveryType,
       city,
       street,
-      paymentMethod: 'cash' as const,
+      paymentMethod,
       lastOrderAt: Date.now(),
       lastOrderItems: cartItems,
     };
@@ -133,7 +136,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         deliveryType,
         city,
         street,
-        paymentMethod: 'cash',
+        paymentMethod,
         notes,
         items: cartItems,
         subtotal,
@@ -555,6 +558,80 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   🏪 איסוף עצמי מהסניף (חינם)
                 </button>
               </div>
+            </div>
+
+            {/* Payment Method (informational only — no real payment processing) */}
+            <div className="bg-white rounded-xl p-4 border border-slate-200 space-y-3">
+              <label className="block text-xs font-bold text-slate-800">
+                איך תרצו לשלם?
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('cash')}
+                  className={`py-2.5 px-2 rounded-xl text-[11px] font-bold transition-all border cursor-pointer flex flex-col items-center gap-1 ${
+                    paymentMethod === 'cash'
+                      ? 'bg-red-600 text-white border-red-600 shadow-xs'
+                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Banknote className="w-4 h-4" />
+                  <span>מזומן</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('credit')}
+                  className={`py-2.5 px-2 rounded-xl text-[11px] font-bold transition-all border cursor-pointer flex flex-col items-center gap-1 ${
+                    paymentMethod === 'credit'
+                      ? 'bg-red-600 text-white border-red-600 shadow-xs'
+                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span>אשראי בהגעה</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('bit')}
+                  className={`py-2.5 px-2 rounded-xl text-[11px] font-bold transition-all border cursor-pointer flex flex-col items-center gap-1 ${
+                    paymentMethod === 'bit'
+                      ? 'bg-red-600 text-white border-red-600 shadow-xs'
+                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Smartphone className="w-4 h-4" />
+                  <span>ביט</span>
+                </button>
+              </div>
+
+              {paymentMethod === 'bit' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-[11px] text-slate-700 space-y-2">
+                  <p>
+                    פתחו את אפליקציית <b>Bit</b> ושלחו <b>₪{grandTotal}</b> למספר הטלפון של שרון:
+                  </p>
+                  <div className="flex items-center justify-between bg-white rounded-lg border border-blue-200 px-3 py-2">
+                    <span className="font-bold text-slate-800" dir="ltr">
+                      {PIZZERIA_CONTACT.phoneDisplay}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(PIZZERIA_CONTACT.phoneDial).then(() => {
+                          setBitCopied(true);
+                          setTimeout(() => setBitCopied(false), 1500);
+                        }).catch(() => {});
+                      }}
+                      className="flex items-center gap-1 text-blue-700 font-bold cursor-pointer"
+                    >
+                      {bitCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{bitCopied ? 'הועתק!' : 'העתק'}</span>
+                    </button>
+                  </div>
+                  <p className="text-slate-500">
+                    לתשומת לבכם: התשלום עצמו מתבצע ישירות באפליקציית Bit, לא דרך האתר. ההזמנה תישלח לשרון עם אמצעי התשלום שבחרתם.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Customer Contact Details */}
